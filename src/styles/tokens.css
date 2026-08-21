@@ -1,0 +1,141 @@
+/*
+ * Design tokens sourced from a Figma Tokens Studio export of Linear's
+ * Community design file (docs/tokens/design-tokens.source.json).
+ * Dark theme values below are ground truth from that export.
+ * Light theme values are derived/approximate, not a real Linear export.
+ */
+
+:root,
+[data-theme="dark"] {
+  /* raw grey scale (dark-theme neutrals, darkest -> lightest) */
+  --grey-151621: #151621;
+  --grey-272832: #272832;
+  --grey-313248: #313248;
+  --grey-444556: #444556;
+  --grey-858699: #858699;
+  --grey-ffffff: #ffffff;
+  --grey-eeeffc: #eeeffc;
+  --grey-e0e1ec: #e0e1ec;
+  --grey-d2d3e0: #d2d3e0;
+  --grey-b0b5c0: #b0b5c0;
+  --grey-6b6f76: #6b6f76;
+  --grey-8d8ba3: #8d8ba3;
+  --grey-4d4f69: #4d4f69;
+  --grey-3c3d53: #3c3d53;
+  --grey-393a4b: #393a4b;
+  --grey-26273b: #26273b;
+  --grey-292a35: #292a35;
+  --grey-1d1e2b: #1d1e2b;
+  --grey-191a23: #191a23;
+  --grey-26293e: #26293e;
+  --grey-292b41: #292b41;
+  --grey-2c2d42: #2c2d42;
+  --grey-21232e: #21232e;
+  --grey-4c4f6b: #4c4f6b;
+  --grey-2c2d3c: #2c2d3c;
+  --grey-1c1d2a: #1c1d2a;
+  --grey-1f2130: #1f2130;
+
+  /* raw primary/brand purple scale */
+  --primary-212234: #212234;
+  --primary-222342: #222342;
+  --primary-242546: #242546;
+  --primary-6c79ff: #6c79ff;
+  --primary-6e79d6: #6e79d6;
+  --primary-666be2: #666be2;
+  --primary-5c67c7: #5c67c7;
+  --primary-575bc7: #575bc7;
+  --primary-7477f0: #7477f0;
+  --primary-37466c: #37466c;
+  --primary-2a2b51: #2a2b51;
+  --primary-5e6ad2: #5e6ad2;
+
+  /* raw decoration/label colors */
+  --decoration-teal: #00b2bf;
+  --decoration-red: #eb5757;
+  --decoration-red-light: #fa6563;
+  --decoration-mustard: #978200;
+  --decoration-yellow: #f2c94c;
+  --decoration-orange: #f2994a;
+  --decoration-purple: #bb87fc;
+  --decoration-blue: #4ea7fc;
+  --decoration-grey: #95a2b3;
+  --decoration-green: #4cb782;
+
+  /* semantic aliases consumed by @theme in globals.css */
+  --color-bg-app: #181921; /* ui.app-background */
+  --color-bg-surface: var(--grey-1d1e2b);
+  --color-bg-popover: #202128; /* ui.tooltip-background layer 0 */
+  --color-bg-subtle: #7c7ca421; /* ui.background */
+  --color-bg-muted: #85869833; /* ui.button-background */
+
+  --color-border-default: #52526f40; /* ui.divider */
+  --color-border-strong: var(--grey-444556);
+
+  --color-text-primary: var(--grey-eeeffc);
+  --color-text-secondary: var(--grey-b0b5c0);
+  --color-text-tertiary: var(--grey-858699);
+  --color-text-disabled: var(--grey-4d4f69);
+  --color-text-on-accent: var(--grey-ffffff);
+
+  --color-accent: var(--primary-5e6ad2);
+  --color-accent-hover: var(--primary-6e79d6);
+  --color-accent-active: var(--primary-575bc7);
+  --color-accent-subtle-bg: var(--primary-212234);
+
+  --color-focus-ring: #6e5ed2; /* ui.caret */
+
+  --color-destructive: var(--decoration-red);
+  --color-destructive-hover: var(--decoration-red-light);
+
+  --color-checkbox-border: #dcd8fe4f; /* ui.checkbox-border */
+  --color-icon-default: #dcd8fe8f; /* ui.icon-default */
+
+  --color-label-teal: var(--decoration-teal);
+  --color-label-red: var(--decoration-red);
+  --color-label-mustard: var(--decoration-mustard);
+  --color-label-yellow: var(--decoration-yellow);
+  --color-label-orange: var(--decoration-orange);
+  --color-label-purple: var(--decoration-purple);
+  --color-label-blue: var(--decoration-blue);
+  --color-label-grey: var(--decoration-grey);
+  --color-label-green: var(--decoration-green);
+
+  --gradient-scrim: linear-gradient(135deg, #1f213024 0%, #1f2130bd 100%);
+
+  /* reserved for the future issues-board phase — kept for traceability,
+     not wired into @theme yet:
+     ui.button-issues #59597440, ui.button-issues-hover #686b863d,
+     ui.button-issues-border-hover #5e5d7b70, ui.background-issue #59597440,
+     ui.url-button #4345632b, ui.checkbox-border (dup) #dcd8fe4f,
+     ui.icon-default-2 #dcd8fe4f, ui.file-background #4345632b,
+     ui.background-sub-issue #1314204d, ui.sub-issue-hover #1b1c2966,
+     ui.background-text-button #5959744f,
+     ui.border-command-bar (#52526f70, #00000033, #00000033),
+     ui.background-command-bar #1d1e2b80 */
+}
+
+[data-theme="light"] {
+  --color-bg-app: #ffffff;
+  --color-bg-surface: #f6f6f8;
+  --color-bg-popover: #ffffff;
+  --color-bg-subtle: #7c7ca414;
+  --color-bg-muted: #85869821;
+
+  --color-border-default: #d2d3e070;
+  --color-border-strong: var(--grey-d2d3e0);
+
+  --color-text-primary: var(--grey-151621);
+  --color-text-secondary: var(--grey-444556);
+  --color-text-tertiary: var(--grey-6b6f76);
+  --color-text-disabled: var(--grey-b0b5c0);
+  --color-text-on-accent: var(--grey-ffffff);
+
+  /* accent and label/decoration colors intentionally unchanged —
+     Linear keeps brand + label colors constant across themes */
+
+  --color-checkbox-border: #4d4f6960;
+  --color-icon-default: #4d4f6990;
+
+  --gradient-scrim: linear-gradient(135deg, #ffffff00 0%, #ffffffbd 100%);
+}
