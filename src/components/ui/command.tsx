@@ -109,7 +109,7 @@ export function CommandDialog({
     <Dialog {...props}>
       <DialogContent
         className={cn(
-          "top-[20%] max-w-lg translate-y-0 gap-0 overflow-hidden p-0 shadow-command-bar",
+          "top-[20%] max-w-lg translate-y-0 gap-0 overflow-hidden bg-bg-command-bar p-0 shadow-command-bar backdrop-blur-xl",
           className,
         )}
       >

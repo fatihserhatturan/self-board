@@ -103,6 +103,8 @@
 
   --gradient-scrim: linear-gradient(135deg, #1f213024 0%, #1f2130bd 100%);
 
+  --color-bg-command-bar: #1d1e2b80; /* ui.background-command-bar */
+
   /* reserved for the future issues-board phase — kept for traceability,
      not wired into @theme yet:
      ui.button-issues #59597440, ui.button-issues-hover #686b863d,
@@ -111,8 +113,7 @@
      ui.icon-default-2 #dcd8fe4f, ui.file-background #4345632b,
      ui.background-sub-issue #1314204d, ui.sub-issue-hover #1b1c2966,
      ui.background-text-button #5959744f,
-     ui.border-command-bar (#52526f70, #00000033, #00000033),
-     ui.background-command-bar #1d1e2b80 */
+     ui.border-command-bar (#52526f70, #00000033, #00000033) */
 }
 
 [data-theme="light"] {
@@ -138,4 +139,5 @@
   --color-icon-default: #4d4f6990;
 
   --gradient-scrim: linear-gradient(135deg, #ffffff00 0%, #ffffffbd 100%);
+  --color-bg-command-bar: #ffffffcc;
 }
