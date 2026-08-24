@@ -32,4 +32,18 @@ export const en: Record<keyof typeof tr, string> = {
   "page.projects.newAction": "New Project",
   "page.cycles.newAction": "New Cycle",
   "localeToggle.label": "Change language",
+  "board.status.backlog": "Backlog",
+  "board.status.todo": "Todo",
+  "board.status.in-progress": "In Progress",
+  "board.status.done": "Done",
+  "board.status.canceled": "Canceled",
+  "board.priority.no-priority": "No priority",
+  "board.priority.urgent": "Urgent",
+  "board.priority.high": "High",
+  "board.priority.medium": "Medium",
+  "board.priority.low": "Low",
+  "board.issueCard.unassigned.label": "Unassigned",
+  "board.listView.placeholder.title": "List view coming soon",
+  "board.listView.placeholder.description":
+    "This view is not implemented yet. Use the Board tab for now.",
 };

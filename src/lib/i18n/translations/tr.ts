@@ -30,4 +30,18 @@ export const tr = {
   "page.projects.newAction": "Yeni Proje",
   "page.cycles.newAction": "Yeni Cycle",
   "localeToggle.label": "Dili değiştir",
+  "board.status.backlog": "Backlog",
+  "board.status.todo": "Todo",
+  "board.status.in-progress": "In Progress",
+  "board.status.done": "Done",
+  "board.status.canceled": "Canceled",
+  "board.priority.no-priority": "No priority",
+  "board.priority.urgent": "Urgent",
+  "board.priority.high": "High",
+  "board.priority.medium": "Medium",
+  "board.priority.low": "Low",
+  "board.issueCard.unassigned.label": "Atanmamış",
+  "board.listView.placeholder.title": "Liste görünümü yakında",
+  "board.listView.placeholder.description":
+    "Bu görünüm henüz uygulanmadı. Şimdilik Pano sekmesini kullanın.",
 } as const;

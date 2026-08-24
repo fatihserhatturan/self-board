@@ -7,14 +7,17 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useAppShell } from "@/components/app-shell/app-shell-provider";
 import { useLocale } from "@/components/locale-provider";
 
+export type TopBarView = "list" | "board";
+
 export interface TopBarProps {
   title: string;
   breadcrumb?: string;
-  viewSwitcher?: boolean;
+  view?: TopBarView;
+  onViewChange?: (view: TopBarView) => void;
   primaryActionLabel?: string;
 }
 
-export function TopBar({ title, breadcrumb, viewSwitcher, primaryActionLabel }: TopBarProps) {
+export function TopBar({ title, breadcrumb, view, onViewChange, primaryActionLabel }: TopBarProps) {
   const { sidebarCollapsed, toggleSidebar } = useAppShell();
   const { t } = useLocale();
 
@@ -40,8 +43,8 @@ export function TopBar({ title, breadcrumb, viewSwitcher, primaryActionLabel }: 
       </div>
 
       <div className="flex items-center gap-2">
-        {viewSwitcher && (
-          <Tabs defaultValue="list">
+        {view && onViewChange && (
+          <Tabs value={view} onValueChange={(v) => onViewChange(v as TopBarView)}>
             <TabsList>
               <TabsTrigger value="list">{t("topbar.tab.list")}</TabsTrigger>
               <TabsTrigger value="board">{t("topbar.tab.board")}</TabsTrigger>
