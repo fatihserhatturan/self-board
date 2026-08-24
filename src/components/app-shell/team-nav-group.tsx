@@ -3,6 +3,7 @@
 import { ChevronRight, ListTodo, RotateCw, Layers } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SidebarNavItem } from "@/components/app-shell/sidebar-nav-item";
+import { useLocale } from "@/components/locale-provider";
 import type { Team } from "@/lib/app-shell-data";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,8 @@ export interface TeamNavGroupProps {
 }
 
 export function TeamNavGroup({ team, defaultOpen = true }: TeamNavGroupProps) {
+  const { t } = useLocale();
+
   return (
     <Collapsible defaultOpen={defaultOpen} className="group">
       <CollapsibleTrigger
@@ -35,19 +38,19 @@ export function TeamNavGroup({ team, defaultOpen = true }: TeamNavGroupProps) {
         <SidebarNavItem
           href={`/team/${team.slug}/issues`}
           icon={ListTodo}
-          label="Issues"
+          label={t("nav.issues")}
           indent
         />
         <SidebarNavItem
           href={`/team/${team.slug}/cycles`}
           icon={RotateCw}
-          label="Cycles"
+          label={t("nav.cycles")}
           indent
         />
         <SidebarNavItem
           href={`/team/${team.slug}/views`}
           icon={Layers}
-          label="Views"
+          label={t("nav.views")}
           indent
         />
       </CollapsibleContent>

@@ -19,6 +19,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useAppShell } from "@/components/app-shell/app-shell-provider";
+import { useLocale } from "@/components/locale-provider";
 import { DEFAULT_TEAM } from "@/lib/app-shell-data";
 
 interface NavCommand {
@@ -27,22 +28,9 @@ interface NavCommand {
   icon: typeof Inbox;
 }
 
-const WORKSPACE_COMMANDS: NavCommand[] = [
-  { label: "Inbox", href: "/inbox", icon: Inbox },
-  { label: "My Issues", href: "/my-issues", icon: ListTodo },
-  { label: "Projects", href: "/projects", icon: FolderKanban },
-  { label: "Views", href: "/views", icon: Layers },
-  { label: "Settings", href: "/settings", icon: Settings },
-];
-
-const TEAM_COMMANDS: NavCommand[] = [
-  { label: `${DEFAULT_TEAM.name} · Issues`, href: `/team/${DEFAULT_TEAM.slug}/issues`, icon: ListTodo },
-  { label: `${DEFAULT_TEAM.name} · Cycles`, href: `/team/${DEFAULT_TEAM.slug}/cycles`, icon: RotateCw },
-  { label: `${DEFAULT_TEAM.name} · Views`, href: `/team/${DEFAULT_TEAM.slug}/views`, icon: Layers },
-];
-
 export function CommandPalette() {
   const { commandOpen, setCommandOpen } = useAppShell();
+  const { t } = useLocale();
   const router = useRouter();
 
   function go(href: Route) {
@@ -50,21 +38,47 @@ export function CommandPalette() {
     setCommandOpen(false);
   }
 
+  const workspaceCommands: NavCommand[] = [
+    { label: t("nav.inbox"), href: "/inbox", icon: Inbox },
+    { label: t("nav.myIssues"), href: "/my-issues", icon: ListTodo },
+    { label: t("nav.projects"), href: "/projects", icon: FolderKanban },
+    { label: t("nav.views"), href: "/views", icon: Layers },
+    { label: t("common.settings"), href: "/settings", icon: Settings },
+  ];
+
+  const teamCommands: NavCommand[] = [
+    {
+      label: `${DEFAULT_TEAM.name} · ${t("nav.issues")}`,
+      href: `/team/${DEFAULT_TEAM.slug}/issues`,
+      icon: ListTodo,
+    },
+    {
+      label: `${DEFAULT_TEAM.name} · ${t("nav.cycles")}`,
+      href: `/team/${DEFAULT_TEAM.slug}/cycles`,
+      icon: RotateCw,
+    },
+    {
+      label: `${DEFAULT_TEAM.name} · ${t("nav.views")}`,
+      href: `/team/${DEFAULT_TEAM.slug}/views`,
+      icon: Layers,
+    },
+  ];
+
   return (
     <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
-      <CommandInput placeholder="Bir komut ara veya sayfaya git..." />
+      <CommandInput placeholder={t("commandPalette.placeholder")} />
       <CommandList>
-        <CommandEmpty>Sonuç bulunamadı.</CommandEmpty>
-        <CommandGroup heading="Workspace">
-          {WORKSPACE_COMMANDS.map((cmd) => (
+        <CommandEmpty>{t("commandPalette.noResults")}</CommandEmpty>
+        <CommandGroup heading={t("nav.section.workspace")}>
+          {workspaceCommands.map((cmd) => (
             <CommandItem key={cmd.href} value={cmd.label} onSelect={() => go(cmd.href)}>
               <cmd.icon className="size-3.5 text-text-tertiary" />
               {cmd.label}
             </CommandItem>
           ))}
         </CommandGroup>
-        <CommandGroup heading="Teams">
-          {TEAM_COMMANDS.map((cmd) => (
+        <CommandGroup heading={t("commandPalette.group.teams")}>
+          {teamCommands.map((cmd) => (
             <CommandItem key={cmd.href} value={cmd.label} onSelect={() => go(cmd.href)}>
               <cmd.icon className="size-3.5 text-text-tertiary" />
               {cmd.label}

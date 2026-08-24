@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useAppShell } from "@/components/app-shell/app-shell-provider";
+import { useLocale } from "@/components/locale-provider";
 
 export interface TopBarProps {
   title: string;
@@ -15,16 +16,17 @@ export interface TopBarProps {
 
 export function TopBar({ title, breadcrumb, viewSwitcher, primaryActionLabel }: TopBarProps) {
   const { sidebarCollapsed, toggleSidebar } = useAppShell();
+  const { t } = useLocale();
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border-default px-4">
       <div className="flex items-center gap-2">
         {sidebarCollapsed && (
-          <Tooltip content="Kenar çubuğunu genişlet">
+          <Tooltip content={t("topbar.expandToggle.label")}>
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Kenar çubuğunu genişlet"
+              aria-label={t("topbar.expandToggle.label")}
               onClick={toggleSidebar}
             >
               <PanelLeft className="size-3.5" />
@@ -41,18 +43,18 @@ export function TopBar({ title, breadcrumb, viewSwitcher, primaryActionLabel }: 
         {viewSwitcher && (
           <Tabs defaultValue="list">
             <TabsList>
-              <TabsTrigger value="list">Liste</TabsTrigger>
-              <TabsTrigger value="board">Pano</TabsTrigger>
+              <TabsTrigger value="list">{t("topbar.tab.list")}</TabsTrigger>
+              <TabsTrigger value="board">{t("topbar.tab.board")}</TabsTrigger>
             </TabsList>
           </Tabs>
         )}
-        <Tooltip content="Filtrele">
-          <Button variant="ghost" size="icon" aria-label="Filtrele">
+        <Tooltip content={t("topbar.filter.label")}>
+          <Button variant="ghost" size="icon" aria-label={t("topbar.filter.label")}>
             <ListFilter className="size-3.5" />
           </Button>
         </Tooltip>
-        <Tooltip content="Görünüm seçenekleri">
-          <Button variant="ghost" size="icon" aria-label="Görünüm seçenekleri">
+        <Tooltip content={t("topbar.viewOptions.label")}>
+          <Button variant="ghost" size="icon" aria-label={t("topbar.viewOptions.label")}>
             <SlidersHorizontal className="size-3.5" />
           </Button>
         </Tooltip>

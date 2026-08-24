@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { LocaleProvider } from "@/components/locale-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toast";
 import "./globals.css";
@@ -19,10 +20,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="tr" className={`${inter.variable} h-full`} suppressHydrationWarning>
       <body className="h-full flex flex-col font-sans antialiased">
-        <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem={false}>
-          {children}
-          <Toaster />
-        </ThemeProvider>
+        <LocaleProvider>
+          <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem={false}>
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </LocaleProvider>
       </body>
     </html>
   );
