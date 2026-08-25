@@ -1,28 +1,9 @@
-import { readFileSync } from "node:fs";
 import path from "node:path";
 import { DEFAULT_TEAM } from "../src/lib/app-shell-data";
 import { getDb } from "../src/lib/db/client";
-
-interface MockData {
-  people: Array<{ id: string; name: string; email: string }>;
-  labels: Array<{ id: string; name: string; color: string }>;
-  issues: Array<{
-    id: string;
-    teamId: string;
-    title: string;
-    description?: string;
-    status: string;
-    priority: string;
-    assigneeId?: string;
-    labelIds: string[];
-    createdAt: string;
-  }>;
-}
+import { seedIssues, seedLabels, seedPeople } from "../src/lib/db/seed-data";
 
 const db = getDb();
-const mock: MockData = JSON.parse(
-  readFileSync(path.join(process.cwd(), "src/lib/mock/issues.json"), "utf-8"),
-);
 
 db.exec(
   "DELETE FROM issue_labels; DELETE FROM issues; DELETE FROM labels; DELETE FROM users; DELETE FROM teams;",
@@ -36,17 +17,17 @@ db.prepare("INSERT INTO teams (id, name, color, initial) VALUES (?, ?, ?, ?)").r
 );
 
 const insertUser = db.prepare("INSERT INTO users (id, name, email) VALUES (?, ?, ?)");
-for (const p of mock.people) insertUser.run(p.id, p.name, p.email);
+for (const p of seedPeople) insertUser.run(p.id, p.name, p.email);
 
 const insertLabel = db.prepare("INSERT INTO labels (id, name, color) VALUES (?, ?, ?)");
-for (const l of mock.labels) insertLabel.run(l.id, l.name, l.color);
+for (const l of seedLabels) insertLabel.run(l.id, l.name, l.color);
 
 const insertIssue = db.prepare(
   "INSERT INTO issues (id, team_id, title, description, status, priority, assignee_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 );
 const insertIssueLabel = db.prepare("INSERT INTO issue_labels (issue_id, label_id) VALUES (?, ?)");
 
-for (const issue of mock.issues) {
+for (const issue of seedIssues) {
   insertIssue.run(
     issue.id,
     issue.teamId,

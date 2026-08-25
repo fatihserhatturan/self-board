@@ -3,6 +3,10 @@ import { getIssues } from "@/lib/data/issues";
 import { DEFAULT_TEAM } from "@/lib/app-shell-data";
 import { TeamIssuesContent } from "./team-issues-content";
 
+// Bu route artık her istekte canlı SQLite state'i okuyor — build-time statik
+// üretim denemesine mahal vermemek için açıkça dinamik olarak işaretleniyor.
+export const dynamic = "force-dynamic";
+
 export default async function TeamIssuesPage({
   params,
 }: {

@@ -1,8 +1,7 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import type { BadgeProps } from "@/components/ui/badge";
 import type { PriorityLevel } from "@/components/ui/priority-icon";
 import type { StatusState } from "@/components/ui/status-icon";
+import { getDb } from "@/lib/db/client";
 
 export interface Person {
   id: string;
@@ -16,8 +15,6 @@ export interface IssueLabel {
   color: NonNullable<BadgeProps["color"]>;
 }
 
-// Board bileşenlerinin doğrudan tükettiği, zaten "join" edilmiş şekil —
-// gerçek bir SQL sorgusunun (JOIN'li) döneceği şeklin aynısı.
 export interface BoardIssue {
   id: string;
   teamId: string;
@@ -30,54 +27,107 @@ export interface BoardIssue {
   createdAt: string;
 }
 
-interface MockData {
-  people: Person[];
-  labels: IssueLabel[];
-  issues: Array<{
-    id: string;
-    teamId: string;
-    title: string;
-    description?: string;
-    status: StatusState;
-    priority: PriorityLevel;
-    assigneeId?: string;
-    labelIds: string[];
-    createdAt: string;
-  }>;
+interface IssueRow {
+  id: string;
+  teamId: string;
+  title: string;
+  description: string | null;
+  status: StatusState;
+  priority: PriorityLevel;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  assigneeEmail: string | null;
+  createdAt: string;
 }
 
-let cache: MockData | null = null;
+interface IssueLabelRow {
+  issueId: string;
+  labelId: string;
+  labelName: string;
+  labelColor: IssueLabel["color"];
+}
 
-async function readMockData(): Promise<MockData> {
-  if (cache) return cache;
-  const filePath = path.join(process.cwd(), "src/lib/mock/issues.json");
-  const raw = await readFile(filePath, "utf-8");
-  cache = JSON.parse(raw) as MockData;
-  return cache;
+function asString(value: unknown): string {
+  return String(value);
+}
+
+function asNullableString(value: unknown): string | null {
+  return value === null || value === undefined ? null : String(value);
+}
+
+function toIssueRow(row: Record<string, unknown>): IssueRow {
+  return {
+    id: asString(row.id),
+    teamId: asString(row.team_id),
+    title: asString(row.title),
+    description: asNullableString(row.description),
+    status: asString(row.status) as StatusState,
+    priority: asString(row.priority) as PriorityLevel,
+    assigneeId: asNullableString(row.assignee_id),
+    assigneeName: asNullableString(row.assignee_name),
+    assigneeEmail: asNullableString(row.assignee_email),
+    createdAt: asString(row.created_at),
+  };
+}
+
+function toIssueLabelRow(row: Record<string, unknown>): IssueLabelRow {
+  return {
+    issueId: asString(row.issue_id),
+    labelId: asString(row.label_id),
+    labelName: asString(row.label_name),
+    labelColor: asString(row.label_color) as IssueLabel["color"],
+  };
 }
 
 /**
- * Takıma ait (hydrate edilmiş) issue'ları döner. `teamId` verilmezse tüm
- * issue'lar döner. Bugün bir JSON dosyasını okuyup elle join yapıyor; ileride
- * SQLite'a geçince bu fonksiyonun *sadece iç gövdesi* bir `db.prepare(...)
- * .all()` çağrısına dönüşecek — dönüş tipi ve çağıran taraflar değişmeyecek.
+ * Takıma özel (hydrate edilmiş) issue'lar. `teamId` verilmezse tümü döner.
+ * SQLite'a iki sorgu atıp label'ları JS'te Map ile manuel join ediyor.
+ * `async` kalıyor (DatabaseSync sync olsa da) — arayüz stabil, ileride farklı
+ * bir backend'e geçilirse çağıran taraflar etkilenmez.
  */
 export async function getIssues(teamId?: string): Promise<BoardIssue[]> {
-  const data = await readMockData();
-  const peopleById = new Map(data.people.map((p) => [p.id, p]));
-  const labelsById = new Map(data.labels.map((l) => [l.id, l]));
+  const db = getDb();
 
-  return data.issues
-    .filter((issue) => !teamId || issue.teamId === teamId)
-    .map((issue) => ({
-      id: issue.id,
-      teamId: issue.teamId,
-      title: issue.title,
-      description: issue.description,
-      status: issue.status,
-      priority: issue.priority,
-      assignee: issue.assigneeId ? peopleById.get(issue.assigneeId) : undefined,
-      labels: issue.labelIds.map((id) => labelsById.get(id)!).filter(Boolean),
-      createdAt: issue.createdAt,
-    }));
+  const issuesSql = `
+    SELECT i.id, i.team_id, i.title, i.description, i.status, i.priority,
+           i.assignee_id, u.name AS assignee_name, u.email AS assignee_email,
+           i.created_at
+    FROM issues i
+    LEFT JOIN users u ON u.id = i.assignee_id
+    ${teamId ? "WHERE i.team_id = ?" : ""}
+    ORDER BY i.created_at ASC
+  `;
+  const rawIssueRows = teamId ? db.prepare(issuesSql).all(teamId) : db.prepare(issuesSql).all();
+  const issueRows = rawIssueRows.map(toIssueRow);
+
+  const labelRows = db
+    .prepare(
+      `SELECT il.issue_id, l.id AS label_id, l.name AS label_name, l.color AS label_color
+       FROM issue_labels il
+       JOIN labels l ON l.id = il.label_id`,
+    )
+    .all()
+    .map(toIssueLabelRow);
+
+  const labelsByIssueId = new Map<string, IssueLabel[]>();
+  for (const row of labelRows) {
+    const list = labelsByIssueId.get(row.issueId) ?? [];
+    list.push({ id: row.labelId, name: row.labelName, color: row.labelColor });
+    labelsByIssueId.set(row.issueId, list);
+  }
+
+  return issueRows.map((row) => ({
+    id: row.id,
+    teamId: row.teamId,
+    title: row.title,
+    description: row.description ?? undefined,
+    status: row.status,
+    priority: row.priority,
+    assignee:
+      row.assigneeId && row.assigneeName && row.assigneeEmail
+        ? { id: row.assigneeId, name: row.assigneeName, email: row.assigneeEmail }
+        : undefined,
+    labels: labelsByIssueId.get(row.id) ?? [],
+    createdAt: row.createdAt,
+  }));
 }

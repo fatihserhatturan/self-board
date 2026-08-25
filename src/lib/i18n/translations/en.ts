@@ -43,7 +43,4 @@ export const en: Record<keyof typeof tr, string> = {
   "board.priority.medium": "Medium",
   "board.priority.low": "Low",
   "board.issueCard.unassigned.label": "Unassigned",
-  "board.listView.placeholder.title": "List view coming soon",
-  "board.listView.placeholder.description":
-    "This view is not implemented yet. Use the Board tab for now.",
 };

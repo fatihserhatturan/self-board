@@ -41,7 +41,4 @@ export const tr = {
   "board.priority.medium": "Medium",
   "board.priority.low": "Low",
   "board.issueCard.unassigned.label": "Atanmamış",
-  "board.listView.placeholder.title": "Liste görünümü yakında",
-  "board.listView.placeholder.description":
-    "Bu görünüm henüz uygulanmadı. Şimdilik Pano sekmesini kullanın.",
 } as const;

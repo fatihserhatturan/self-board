@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ListTodo } from "lucide-react";
 import { Board } from "@/components/board/board";
+import { IssueList } from "@/components/board/issue-list";
 import { TopBar, type TopBarView } from "@/components/app-shell/top-bar";
-import { EmptyState } from "@/components/ui/empty-state";
 import { useLocale } from "@/components/locale-provider";
 import { DEFAULT_TEAM } from "@/lib/app-shell-data";
 import type { BoardIssue } from "@/lib/data/issues";
@@ -26,15 +25,7 @@ export function TeamIssuesContent({ issues }: TeamIssuesContentProps) {
         onViewChange={setView}
         primaryActionLabel={t("common.newIssue")}
       />
-      {view === "board" ? (
-        <Board issues={issues} />
-      ) : (
-        <EmptyState
-          icon={ListTodo}
-          title={t("board.listView.placeholder.title")}
-          description={t("board.listView.placeholder.description")}
-        />
-      )}
+      {view === "board" ? <Board issues={issues} /> : <IssueList issues={issues} />}
     </>
   );
 }
