@@ -20,9 +20,9 @@ export function WorkspaceSwitcher({ workspaceName }: WorkspaceSwitcherProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-small font-medium text-text-primary transition-colors hover:bg-bg-muted">
-        <span className="flex size-5 shrink-0 items-center justify-center rounded bg-accent">
-          {/* eslint-disable-next-line @next/next/no-img-element -- fixed 14px static asset, next/image adds no benefit */}
-          <img src="/app-icon.png" alt="" width={14} height={14} className="size-3.5" />
+        <span className="flex size-7 shrink-0 items-center justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element -- fixed 28px static asset, next/image adds no benefit */}
+          <img src="/app-icon.png" alt="" width={28} height={28} className="size-7" />
         </span>
         <span className="flex-1 truncate text-left">{workspaceName}</span>
         <ChevronDown className="size-3.5 shrink-0 text-text-tertiary" />
