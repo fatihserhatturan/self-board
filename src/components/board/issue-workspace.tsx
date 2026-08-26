@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ListFilter, SlidersHorizontal } from "lucide-react";
+import { ListFilter, ListTodo, SlidersHorizontal } from "lucide-react";
 import { Board } from "@/components/board/board";
 import { CreateIssueDialog } from "@/components/board/create-issue-dialog";
 import { IssueDetailDialog } from "@/components/board/issue-detail-dialog";
@@ -20,9 +20,10 @@ import { TopBar, type TopBarView } from "@/components/app-shell/top-bar";
 import type { PriorityLevel } from "@/components/ui/priority-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLocale } from "@/components/locale-provider";
-import { DEFAULT_TEAM } from "@/lib/app-shell-data";
+import type { TranslationKey } from "@/lib/i18n/types";
 import type { BoardIssue, IssueLabel, Person } from "@/lib/data/issues";
 import { useLocalStorageState } from "@/lib/use-local-storage-state";
 
@@ -34,13 +35,25 @@ const PRIORITY_RANK: Record<PriorityLevel, number> = {
   "no-priority": 4,
 };
 
-export interface TeamIssuesContentProps {
+export interface IssueWorkspaceProps {
+  titleKey: TranslationKey;
+  breadcrumb?: string;
+  teamId: string;
   issues: BoardIssue[];
   users: Person[];
   labels: IssueLabel[];
+  defaultAssigneeId?: string | null;
 }
 
-export function TeamIssuesContent({ issues, users, labels }: TeamIssuesContentProps) {
+export function IssueWorkspace({
+  titleKey,
+  breadcrumb,
+  teamId,
+  issues,
+  users,
+  labels,
+  defaultAssigneeId,
+}: IssueWorkspaceProps) {
   const { t } = useLocale();
   const [view, setView] = useState<TopBarView>("list");
 
@@ -116,8 +129,8 @@ export function TeamIssuesContent({ issues, users, labels }: TeamIssuesContentPr
       <Popover open={filterOpen} onOpenChange={setFilterOpen}>
         <Popover open={viewOptionsOpen} onOpenChange={setViewOptionsOpen}>
           <TopBar
-            title={t("nav.issues")}
-            breadcrumb={DEFAULT_TEAM.name}
+            title={t(titleKey)}
+            breadcrumb={breadcrumb}
             view={view}
             onViewChange={setView}
             primaryActionLabel={t("common.newIssue")}
@@ -166,7 +179,13 @@ export function TeamIssuesContent({ issues, users, labels }: TeamIssuesContentPr
         </PopoverContent>
       </Popover>
 
-      {view === "board" ? (
+      {issues.length === 0 ? (
+        <EmptyState
+          icon={ListTodo}
+          title={t("emptyState.issues.title")}
+          action={{ label: t("emptyState.issues.action"), onClick: () => setCreateOpen(true) }}
+        />
+      ) : view === "board" ? (
         <Board issues={sortedIssues} onOpenIssue={openDetail} viewOptions={viewOptions} />
       ) : (
         <IssueList issues={sortedIssues} onOpenIssue={openDetail} viewOptions={viewOptions} />
@@ -175,9 +194,10 @@ export function TeamIssuesContent({ issues, users, labels }: TeamIssuesContentPr
       <CreateIssueDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        teamId={DEFAULT_TEAM.slug}
+        teamId={teamId}
         users={users}
         labels={labels}
+        defaultAssigneeId={defaultAssigneeId}
       />
 
       <IssueDetailDialog

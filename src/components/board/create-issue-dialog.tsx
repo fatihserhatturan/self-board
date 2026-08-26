@@ -10,14 +10,16 @@ import { IssueDialogForm } from "@/components/board/issue-dialog-form";
 import { createIssue, type IssueFormValues } from "@/lib/actions/issues";
 import type { IssueLabel, Person } from "@/lib/data/issues";
 
-const DEFAULT_VALUES: IssueFormValues = {
-  title: "",
-  description: "",
-  status: "backlog",
-  priority: "no-priority",
-  assigneeId: null,
-  labelIds: [],
-};
+function buildDefaultValues(defaultAssigneeId?: string | null): IssueFormValues {
+  return {
+    title: "",
+    description: "",
+    status: "backlog",
+    priority: "no-priority",
+    assigneeId: defaultAssigneeId ?? null,
+    labelIds: [],
+  };
+}
 
 export interface CreateIssueDialogProps {
   open: boolean;
@@ -25,6 +27,7 @@ export interface CreateIssueDialogProps {
   teamId: string;
   users: Person[];
   labels: IssueLabel[];
+  defaultAssigneeId?: string | null;
 }
 
 export function CreateIssueDialog({
@@ -33,10 +36,11 @@ export function CreateIssueDialog({
   teamId,
   users,
   labels,
+  defaultAssigneeId,
 }: CreateIssueDialogProps) {
   const { t } = useLocale();
   const router = useRouter();
-  const [values, setValues] = useState<IssueFormValues>(DEFAULT_VALUES);
+  const [values, setValues] = useState<IssueFormValues>(() => buildDefaultValues(defaultAssigneeId));
   const [titleError, setTitleError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
@@ -44,7 +48,7 @@ export function CreateIssueDialog({
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) {
-      setValues(DEFAULT_VALUES);
+      setValues(buildDefaultValues(defaultAssigneeId));
       setTitleError(undefined);
     }
   }
