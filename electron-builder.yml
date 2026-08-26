@@ -1,0 +1,23 @@
+appId: com.selfboard.app
+productName: Self Board
+directories:
+  output: release
+files:
+  - dist-electron/**/*
+  - package.json
+extraResources:
+  - from: .next/standalone
+    to: standalone
+  - from: resources/icon/icon.png
+    to: icon.png
+win:
+  target:
+    - nsis
+  icon: resources/icon/icon.ico
+mac:
+  icon: resources/icon/icon.icns
+linux:
+  icon: resources/icon/png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

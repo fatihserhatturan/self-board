@@ -42,3 +42,7 @@ next-env.d.ts
 
 # sqlite (Faz 4)
 /data/
+
+# electron build output
+/dist-electron/
+/release/

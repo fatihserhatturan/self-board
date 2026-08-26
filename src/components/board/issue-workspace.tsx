@@ -126,58 +126,54 @@ export function IssueWorkspace({
 
   return (
     <>
-      <Popover open={filterOpen} onOpenChange={setFilterOpen}>
-        <Popover open={viewOptionsOpen} onOpenChange={setViewOptionsOpen}>
-          <TopBar
-            title={t(titleKey)}
-            breadcrumb={breadcrumb}
-            view={view}
-            onViewChange={setView}
-            primaryActionLabel={t("common.newIssue")}
-            onPrimaryAction={() => setCreateOpen(true)}
-            filterTrigger={
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t("topbar.filter.label")}
-                  className="relative"
-                >
-                  <ListFilter className="size-3.5" />
-                  {activeFilterCount > 0 && (
-                    <Badge size="sm" color="blue" className="absolute -right-1 -top-1 px-1">
-                      {activeFilterCount}
-                    </Badge>
-                  )}
-                </Button>
-              </PopoverTrigger>
-            }
-            viewOptionsTrigger={
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t("topbar.viewOptions.label")}
-                >
-                  <SlidersHorizontal className="size-3.5" />
-                </Button>
-              </PopoverTrigger>
-            }
-          />
-          <PopoverContent align="end" className="w-64">
-            <IssueViewOptionsPanel options={viewOptions} onChange={setViewOptions} />
-          </PopoverContent>
-        </Popover>
-        <PopoverContent align="end" className="w-80">
-          <IssueFilterPanel
-            criteria={filterCriteria}
-            onChange={setFilterCriteria}
-            onClear={() => setFilterCriteria(EMPTY_FILTER_CRITERIA)}
-            users={users}
-            labels={labels}
-          />
-        </PopoverContent>
-      </Popover>
+      <TopBar
+        title={t(titleKey)}
+        breadcrumb={breadcrumb}
+        view={view}
+        onViewChange={setView}
+        primaryActionLabel={t("common.newIssue")}
+        onPrimaryAction={() => setCreateOpen(true)}
+        filterTrigger={
+          <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t("topbar.filter.label")}
+                className="relative"
+              >
+                <ListFilter className="size-3.5" />
+                {activeFilterCount > 0 && (
+                  <Badge size="sm" color="blue" className="absolute -right-1 -top-1 px-1">
+                    {activeFilterCount}
+                  </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80">
+              <IssueFilterPanel
+                criteria={filterCriteria}
+                onChange={setFilterCriteria}
+                onClear={() => setFilterCriteria(EMPTY_FILTER_CRITERIA)}
+                users={users}
+                labels={labels}
+              />
+            </PopoverContent>
+          </Popover>
+        }
+        viewOptionsTrigger={
+          <Popover open={viewOptionsOpen} onOpenChange={setViewOptionsOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label={t("topbar.viewOptions.label")}>
+                <SlidersHorizontal className="size-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64">
+              <IssueViewOptionsPanel options={viewOptions} onChange={setViewOptions} />
+            </PopoverContent>
+          </Popover>
+        }
+      />
 
       {issues.length === 0 ? (
         <EmptyState
