@@ -5,11 +5,7 @@ import { ensureSchema } from "@/lib/db/schema";
 
 let db: DatabaseSync | null = null;
 
-/**
- * Lazy-açılan SQLite singleton'ı. UI bu fazda bu modülü hiç import etmiyor —
- * yalnızca `scripts/seed.ts` tarafından çağrılıyor. İleride gerçek okuma/yazma
- * gerektiğinde `src/lib/data/*` katmanları bu client'a bağlanacak.
- */
+/** Lazy-açılan SQLite singleton'ı. `src/lib/data/*` ve `src/lib/actions/*` tarafından kullanılıyor. */
 export function getDb(): DatabaseSync {
   if (db) return db;
   const dbPath = path.join(process.cwd(), "data", "self-board.db");
