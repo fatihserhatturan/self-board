@@ -3,6 +3,7 @@ export interface Team {
   name: string;
   color: string;
   initial: string;
+  prefix: string;
 }
 
 export const DEFAULT_TEAM: Team = {
@@ -10,6 +11,7 @@ export const DEFAULT_TEAM: Team = {
   name: "Core Team",
   color: "bg-label-blue",
   initial: "C",
+  prefix: "COR",
 };
 
 export const TEAMS: Team[] = [DEFAULT_TEAM];

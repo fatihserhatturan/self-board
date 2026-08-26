@@ -8,9 +8,11 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useLocale } from "@/components/locale-provider";
 import type { BoardIssue } from "@/lib/data/issues";
 import { cn } from "@/lib/utils";
+import type { IssueViewOptions } from "@/components/board/issue-view-options-panel";
 
 export interface IssueCardContentProps {
   issue: BoardIssue;
+  viewOptions: IssueViewOptions;
   className?: string;
 }
 
@@ -21,7 +23,7 @@ export interface IssueCardContentProps {
  * would register a second node under the same issue id in dnd-kit's internal
  * registry while the drag is active, corrupting the real card's tracking).
  */
-export function IssueCardContent({ issue, className }: IssueCardContentProps) {
+export function IssueCardContent({ issue, viewOptions, className }: IssueCardContentProps) {
   const { t } = useLocale();
 
   return (
@@ -33,16 +35,18 @@ export function IssueCardContent({ issue, className }: IssueCardContentProps) {
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-mini text-text-tertiary">{issue.id}</span>
-        <Tooltip content={t(`board.priority.${issue.priority}`)}>
-          <span className="flex">
-            <PriorityIcon level={issue.priority} size="sm" />
-          </span>
-        </Tooltip>
+        {viewOptions.showPriority && (
+          <Tooltip content={t(`board.priority.${issue.priority}`)}>
+            <span className="flex">
+              <PriorityIcon level={issue.priority} size="sm" />
+            </span>
+          </Tooltip>
+        )}
       </div>
 
       <p className="text-small text-text-primary">{issue.title}</p>
 
-      {issue.labels.length > 0 && (
+      {viewOptions.showLabels && issue.labels.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {issue.labels.map((label) => (
             <Badge key={label.id} color={label.color} size="sm">
@@ -52,30 +56,34 @@ export function IssueCardContent({ issue, className }: IssueCardContentProps) {
         </div>
       )}
 
-      <div className="flex justify-end">
-        {issue.assignee ? (
-          <Tooltip content={issue.assignee.name}>
-            <span className="flex">
-              <Avatar name={issue.assignee.name} size="sm" />
-            </span>
-          </Tooltip>
-        ) : (
-          <Tooltip content={t("board.issueCard.unassigned.label")}>
-            <span className="flex size-6 items-center justify-center rounded-full border border-dashed border-border-default text-micro text-text-tertiary">
-              ?
-            </span>
-          </Tooltip>
-        )}
-      </div>
+      {viewOptions.showAssignee && (
+        <div className="flex justify-end">
+          {issue.assignee ? (
+            <Tooltip content={issue.assignee.name}>
+              <span className="flex">
+                <Avatar name={issue.assignee.name} size="sm" />
+              </span>
+            </Tooltip>
+          ) : (
+            <Tooltip content={t("board.issueCard.unassigned.label")}>
+              <span className="flex size-6 items-center justify-center rounded-full border border-dashed border-border-default text-micro text-text-tertiary">
+                ?
+              </span>
+            </Tooltip>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 export interface IssueCardProps {
   issue: BoardIssue;
+  onOpen?: (issue: BoardIssue) => void;
+  viewOptions: IssueViewOptions;
 }
 
-export function IssueCard({ issue }: IssueCardProps) {
+export function IssueCard({ issue, onOpen, viewOptions }: IssueCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: issue.id,
   });
@@ -85,9 +93,18 @@ export function IssueCard({ issue }: IssueCardProps) {
     : undefined;
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={() => {
+        if (!isDragging) onOpen?.(issue);
+      }}
+    >
       <IssueCardContent
         issue={issue}
+        viewOptions={viewOptions}
         className={cn(
           "cursor-grab hover:border-border-strong active:cursor-grabbing",
           isDragging && "opacity-40",

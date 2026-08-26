@@ -1,6 +1,7 @@
 "use client";
 
 import { ListFilter, PanelLeft, Plus, SlidersHorizontal } from "lucide-react";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -15,9 +16,21 @@ export interface TopBarProps {
   view?: TopBarView;
   onViewChange?: (view: TopBarView) => void;
   primaryActionLabel?: string;
+  onPrimaryAction?: () => void;
+  filterTrigger?: ReactNode;
+  viewOptionsTrigger?: ReactNode;
 }
 
-export function TopBar({ title, breadcrumb, view, onViewChange, primaryActionLabel }: TopBarProps) {
+export function TopBar({
+  title,
+  breadcrumb,
+  view,
+  onViewChange,
+  primaryActionLabel,
+  onPrimaryAction,
+  filterTrigger,
+  viewOptionsTrigger,
+}: TopBarProps) {
   const { sidebarCollapsed, toggleSidebar } = useAppShell();
   const { t } = useLocale();
 
@@ -51,18 +64,22 @@ export function TopBar({ title, breadcrumb, view, onViewChange, primaryActionLab
             </TabsList>
           </Tabs>
         )}
-        <Tooltip content={t("topbar.filter.label")}>
-          <Button variant="ghost" size="icon" aria-label={t("topbar.filter.label")}>
-            <ListFilter className="size-3.5" />
-          </Button>
-        </Tooltip>
-        <Tooltip content={t("topbar.viewOptions.label")}>
-          <Button variant="ghost" size="icon" aria-label={t("topbar.viewOptions.label")}>
-            <SlidersHorizontal className="size-3.5" />
-          </Button>
-        </Tooltip>
+        {filterTrigger ?? (
+          <Tooltip content={t("topbar.filter.label")}>
+            <Button variant="ghost" size="icon" aria-label={t("topbar.filter.label")}>
+              <ListFilter className="size-3.5" />
+            </Button>
+          </Tooltip>
+        )}
+        {viewOptionsTrigger ?? (
+          <Tooltip content={t("topbar.viewOptions.label")}>
+            <Button variant="ghost" size="icon" aria-label={t("topbar.viewOptions.label")}>
+              <SlidersHorizontal className="size-3.5" />
+            </Button>
+          </Tooltip>
+        )}
         {primaryActionLabel && (
-          <Button size="sm">
+          <Button size="sm" onClick={onPrimaryAction}>
             <Plus className="size-3.5" />
             {primaryActionLabel}
           </Button>

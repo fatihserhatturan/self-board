@@ -5,15 +5,23 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { StatusIcon, type StatusState } from "@/components/ui/status-icon";
 import { IssueListRow } from "@/components/board/issue-list-row";
+import type { IssueViewOptions } from "@/components/board/issue-view-options-panel";
 import { useLocale } from "@/components/locale-provider";
 import type { BoardIssue } from "@/lib/data/issues";
 
 export interface IssueListSectionProps {
   status: StatusState;
   issues: BoardIssue[];
+  onOpenIssue?: (issue: BoardIssue) => void;
+  viewOptions: IssueViewOptions;
 }
 
-export function IssueListSection({ status, issues }: IssueListSectionProps) {
+export function IssueListSection({
+  status,
+  issues,
+  onOpenIssue,
+  viewOptions,
+}: IssueListSectionProps) {
   const { t } = useLocale();
 
   return (
@@ -31,7 +39,12 @@ export function IssueListSection({ status, issues }: IssueListSectionProps) {
       <CollapsibleContent>
         <div className="flex flex-col divide-y divide-border-default">
           {issues.map((issue) => (
-            <IssueListRow key={issue.id} issue={issue} />
+            <IssueListRow
+              key={issue.id}
+              issue={issue}
+              onOpen={onOpenIssue}
+              viewOptions={viewOptions}
+            />
           ))}
         </div>
       </CollapsibleContent>

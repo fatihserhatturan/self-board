@@ -8,13 +8,16 @@ import { useLocale } from "@/components/locale-provider";
 import type { BoardIssue } from "@/lib/data/issues";
 import { cn } from "@/lib/utils";
 import { IssueCard } from "@/components/board/issue-card";
+import type { IssueViewOptions } from "@/components/board/issue-view-options-panel";
 
 export interface BoardColumnProps {
   status: StatusState;
   issues: BoardIssue[];
+  onOpenIssue?: (issue: BoardIssue) => void;
+  viewOptions: IssueViewOptions;
 }
 
-export function BoardColumn({ status, issues }: BoardColumnProps) {
+export function BoardColumn({ status, issues, onOpenIssue, viewOptions }: BoardColumnProps) {
   const { t } = useLocale();
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
@@ -38,7 +41,7 @@ export function BoardColumn({ status, issues }: BoardColumnProps) {
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-2 px-2 pb-3">
           {issues.map((issue) => (
-            <IssueCard key={issue.id} issue={issue} />
+            <IssueCard key={issue.id} issue={issue} onOpen={onOpenIssue} viewOptions={viewOptions} />
           ))}
         </div>
       </ScrollArea>

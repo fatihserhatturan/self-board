@@ -131,3 +131,21 @@ export async function getIssues(teamId?: string): Promise<BoardIssue[]> {
     createdAt: row.createdAt,
   }));
 }
+
+export async function getUsers(): Promise<Person[]> {
+  const db = getDb();
+  const rows = db.prepare("SELECT id, name, email FROM users ORDER BY name ASC").all();
+  return rows.map((row) => {
+    const r = row as Record<string, unknown>;
+    return { id: asString(r.id), name: asString(r.name), email: asString(r.email) };
+  });
+}
+
+export async function getLabels(): Promise<IssueLabel[]> {
+  const db = getDb();
+  const rows = db.prepare("SELECT id, name, color FROM labels ORDER BY name ASC").all();
+  return rows.map((row) => {
+    const r = row as Record<string, unknown>;
+    return { id: asString(r.id), name: asString(r.name), color: asString(r.color) as IssueLabel["color"] };
+  });
+}
