@@ -24,5 +24,3 @@ export const CURRENT_USER = {
 export const WORKSPACE = {
   name: "self-board",
 };
-
-export const INBOX_UNREAD_COUNT = 3;

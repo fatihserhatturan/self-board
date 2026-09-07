@@ -12,6 +12,7 @@ export const en: Record<keyof typeof tr, string> = {
   "commandPalette.group.teams": "Teams",
   "common.settings": "Settings",
   "common.newIssue": "New Issue",
+  "common.comingSoon": "Coming soon",
   "sidebar.search.placeholder": "Search...",
   "sidebar.collapseToggle.label": "Collapse sidebar",
   "topbar.expandToggle.label": "Expand sidebar",

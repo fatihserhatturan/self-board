@@ -14,6 +14,7 @@ import {
 import { BoardColumn } from "@/components/board/board-column";
 import { IssueCardContent } from "@/components/board/issue-card";
 import type { IssueViewOptions } from "@/components/board/issue-view-options-panel";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { StatusState } from "@/components/ui/status-icon";
 import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
@@ -74,17 +75,19 @@ export function Board({ issues, onOpenIssue, viewOptions }: BoardProps) {
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto p-4">
-        {statusStates.map((status) => (
-          <BoardColumn
-            key={status}
-            status={status}
-            issues={boardIssues.filter((issue) => issue.status === status)}
-            onOpenIssue={onOpenIssue}
-            viewOptions={viewOptions}
-          />
-        ))}
-      </div>
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="flex h-full gap-3 p-4">
+          {statusStates.map((status) => (
+            <BoardColumn
+              key={status}
+              status={status}
+              issues={boardIssues.filter((issue) => issue.status === status)}
+              onOpenIssue={onOpenIssue}
+              viewOptions={viewOptions}
+            />
+          ))}
+        </div>
+      </ScrollArea>
       <DragOverlay>
         {activeIssue && (
           <IssueCardContent

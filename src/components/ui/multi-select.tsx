@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 export interface MultiSelectOption {
@@ -50,30 +51,32 @@ export function MultiSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-1">
-        <div className="flex max-h-64 flex-col overflow-y-auto">
-          {options.map((option) => {
-            const checked = value.includes(option.value);
-            return (
-              <div
-                key={option.value}
-                role="option"
-                aria-selected={checked}
-                tabIndex={0}
-                onClick={() => toggle(option.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    toggle(option.value);
-                  }
-                }}
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-small text-text-primary outline-none transition-colors hover:bg-bg-muted focus-visible:bg-bg-muted"
-              >
-                <Checkbox checked={checked} className="pointer-events-none" />
-                <span className="flex-1 truncate">{option.label}</span>
-              </div>
-            );
-          })}
-        </div>
+        <ScrollArea className="max-h-64">
+          <div className="flex flex-col">
+            {options.map((option) => {
+              const checked = value.includes(option.value);
+              return (
+                <div
+                  key={option.value}
+                  role="option"
+                  aria-selected={checked}
+                  tabIndex={0}
+                  onClick={() => toggle(option.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggle(option.value);
+                    }
+                  }}
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-small text-text-primary outline-none transition-colors hover:bg-bg-muted focus-visible:bg-bg-muted"
+                >
+                  <Checkbox checked={checked} className="pointer-events-none" />
+                  <span className="flex-1 truncate">{option.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
       </PopoverContent>
     </Popover>
   );

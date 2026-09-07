@@ -9,6 +9,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 export function Command({ className, ...props }: ComponentProps<typeof CommandPrimitive>) {
@@ -43,10 +44,9 @@ export function CommandList({
   ...props
 }: ComponentProps<typeof CommandPrimitive.List>) {
   return (
-    <CommandPrimitive.List
-      className={cn("max-h-80 overflow-y-auto overflow-x-hidden p-1", className)}
-      {...props}
-    />
+    <ScrollArea className="max-h-80">
+      <CommandPrimitive.List className={cn("overflow-x-hidden p-1", className)} {...props} />
+    </ScrollArea>
   );
 }
 

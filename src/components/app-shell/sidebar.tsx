@@ -23,11 +23,11 @@ import { WorkspaceSwitcher } from "@/components/app-shell/workspace-switcher";
 import { useAppShell } from "@/components/app-shell/app-shell-provider";
 import { LanguageToggle } from "@/components/language-toggle";
 import { useLocale } from "@/components/locale-provider";
-import { CURRENT_USER, INBOX_UNREAD_COUNT, TEAMS, WORKSPACE } from "@/lib/app-shell-data";
+import { CURRENT_USER, TEAMS, WORKSPACE } from "@/lib/app-shell-data";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
-  const { sidebarCollapsed, toggleSidebar, setCommandOpen } = useAppShell();
+  const { sidebarCollapsed, toggleSidebar, setCommandOpen, setCreateIssueOpen } = useAppShell();
   const { t } = useLocale();
 
   return (
@@ -54,7 +54,11 @@ export function Sidebar() {
             </span>
           </Button>
 
-          <Button variant="secondary" className="w-full justify-start gap-2 font-normal">
+          <Button
+            variant="secondary"
+            className="w-full justify-start gap-2 font-normal"
+            onClick={() => setCreateIssueOpen(true)}
+          >
             <Plus className="size-3.5" />
             {t("common.newIssue")}
           </Button>
@@ -63,12 +67,7 @@ export function Sidebar() {
         <ScrollArea className="min-h-0 flex-1">
           <div className="flex flex-col gap-4 px-2 pb-4">
             <div className="flex flex-col gap-0.5">
-              <SidebarNavItem
-                href="/inbox"
-                icon={Inbox}
-                label={t("nav.inbox")}
-                badge={INBOX_UNREAD_COUNT}
-              />
+              <SidebarNavItem href="/inbox" icon={Inbox} label={t("nav.inbox")} />
               <SidebarNavItem href="/my-issues" icon={ListTodo} label={t("nav.myIssues")} />
             </div>
 

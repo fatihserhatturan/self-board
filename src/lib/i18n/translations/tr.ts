@@ -10,6 +10,7 @@ export const tr = {
   "commandPalette.group.teams": "Teams",
   "common.settings": "Ayarlar",
   "common.newIssue": "Yeni Issue",
+  "common.comingSoon": "Yakında",
   "sidebar.search.placeholder": "Ara...",
   "sidebar.collapseToggle.label": "Kenar çubuğunu daralt",
   "topbar.expandToggle.label": "Kenar çubuğunu genişlet",

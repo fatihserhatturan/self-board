@@ -14,6 +14,7 @@ export function TeamCyclesContent() {
         title={t("nav.cycles")}
         breadcrumb={DEFAULT_TEAM.name}
         primaryActionLabel={t("page.cycles.newAction")}
+        primaryActionDisabled
       />
       <EmptyState icon={RotateCw} title={t("emptyState.cycles.title")} />
     </>

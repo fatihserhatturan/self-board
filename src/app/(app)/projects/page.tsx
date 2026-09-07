@@ -16,6 +16,7 @@ export default function ProjectsPage() {
         view={view}
         onViewChange={setView}
         primaryActionLabel={t("page.projects.newAction")}
+        primaryActionDisabled
       />
       <EmptyState icon={FolderKanban} title={t("emptyState.projects.title")} />
     </>

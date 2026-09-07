@@ -8,6 +8,8 @@ export interface AppShellContextValue {
   toggleSidebar: () => void;
   commandOpen: boolean;
   setCommandOpen: (open: boolean) => void;
+  createIssueOpen: boolean;
+  setCreateIssueOpen: (open: boolean) => void;
 }
 
 const AppShellContext = createContext<AppShellContextValue | null>(null);
@@ -26,6 +28,7 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
     false,
   );
   const [commandOpen, setCommandOpen] = useState(false);
+  const [createIssueOpen, setCreateIssueOpen] = useState(false);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -45,6 +48,8 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
         toggleSidebar: () => setSidebarCollapsed(!sidebarCollapsed),
         commandOpen,
         setCommandOpen,
+        createIssueOpen,
+        setCreateIssueOpen,
       }}
     >
       {children}

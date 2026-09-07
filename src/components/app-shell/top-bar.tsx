@@ -1,6 +1,6 @@
 "use client";
 
-import { ListFilter, PanelLeft, Plus, SlidersHorizontal } from "lucide-react";
+import { PanelLeft, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,6 +17,7 @@ export interface TopBarProps {
   onViewChange?: (view: TopBarView) => void;
   primaryActionLabel?: string;
   onPrimaryAction?: () => void;
+  primaryActionDisabled?: boolean;
   filterTrigger?: ReactNode;
   viewOptionsTrigger?: ReactNode;
 }
@@ -28,6 +29,7 @@ export function TopBar({
   onViewChange,
   primaryActionLabel,
   onPrimaryAction,
+  primaryActionDisabled,
   filterTrigger,
   viewOptionsTrigger,
 }: TopBarProps) {
@@ -64,26 +66,26 @@ export function TopBar({
             </TabsList>
           </Tabs>
         )}
-        {filterTrigger ?? (
-          <Tooltip content={t("topbar.filter.label")}>
-            <Button variant="ghost" size="icon" aria-label={t("topbar.filter.label")}>
-              <ListFilter className="size-3.5" />
+        {filterTrigger}
+        {viewOptionsTrigger}
+        {primaryActionLabel &&
+          (primaryActionDisabled ? (
+            <Tooltip content={t("common.comingSoon")}>
+              {/* disabled buttons don't fire pointer/hover events, so the tooltip
+                  trigger wraps a plain span that stays interactive */}
+              <span>
+                <Button size="sm" disabled>
+                  <Plus className="size-3.5" />
+                  {primaryActionLabel}
+                </Button>
+              </span>
+            </Tooltip>
+          ) : (
+            <Button size="sm" onClick={onPrimaryAction}>
+              <Plus className="size-3.5" />
+              {primaryActionLabel}
             </Button>
-          </Tooltip>
-        )}
-        {viewOptionsTrigger ?? (
-          <Tooltip content={t("topbar.viewOptions.label")}>
-            <Button variant="ghost" size="icon" aria-label={t("topbar.viewOptions.label")}>
-              <SlidersHorizontal className="size-3.5" />
-            </Button>
-          </Tooltip>
-        )}
-        {primaryActionLabel && (
-          <Button size="sm" onClick={onPrimaryAction}>
-            <Plus className="size-3.5" />
-            {primaryActionLabel}
-          </Button>
-        )}
+          ))}
       </div>
     </header>
   );
