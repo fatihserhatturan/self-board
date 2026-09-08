@@ -20,7 +20,6 @@ import { SidebarNavItem } from "@/components/app-shell/sidebar-nav-item";
 import { TeamNavGroup } from "@/components/app-shell/team-nav-group";
 import { WorkspaceSwitcher } from "@/components/app-shell/workspace-switcher";
 import { useAppShell } from "@/components/app-shell/app-shell-provider";
-import { LanguageToggle } from "@/components/language-toggle";
 import { useLocale } from "@/components/locale-provider";
 import { TEAMS, WORKSPACE } from "@/lib/app-shell-data";
 import type { Person } from "@/lib/data/issues";
@@ -100,7 +99,6 @@ export function Sidebar({ currentUser }: SidebarProps) {
           <span className="flex-1 truncate text-small text-text-primary">
             {currentUser?.name}
           </span>
-          <LanguageToggle />
           <Tooltip content={t("common.settings")}>
             <Button variant="ghost" size="icon" aria-label={t("common.settings")} asChild>
               <Link href="/settings">

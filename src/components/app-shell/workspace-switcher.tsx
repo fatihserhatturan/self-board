@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, Settings, UserPlus } from "lucide-react";
+import { ChevronDown, Settings } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,9 +32,6 @@ export function WorkspaceSwitcher({ workspaceName }: WorkspaceSwitcherProps) {
           <Link href="/settings">
             <Settings className="size-3.5" /> {t("common.settings")}
           </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled>
-          <UserPlus className="size-3.5" /> {t("workspaceSwitcher.inviteUser")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -1,16 +1,12 @@
-"use client";
+import { SettingsContent } from "@/components/settings/settings-content";
+import { getCurrentUser, getLabels } from "@/lib/data/issues";
 
-import { Settings } from "lucide-react";
-import { TopBar } from "@/components/app-shell/top-bar";
-import { EmptyState } from "@/components/ui/empty-state";
-import { useLocale } from "@/components/locale-provider";
+// Diğer route'larda olduğu gibi: canlı SQLite state'i okuyor, build-time
+// statik üretim denemesine mahal vermemek için dinamik olarak işaretleniyor.
+export const dynamic = "force-dynamic";
 
-export default function SettingsPage() {
-  const { t } = useLocale();
-  return (
-    <>
-      <TopBar title={t("common.settings")} />
-      <EmptyState icon={Settings} title={t("emptyState.settings.title")} />
-    </>
-  );
+export default async function SettingsPage() {
+  const [labels, currentUser] = await Promise.all([getLabels(), getCurrentUser()]);
+
+  return <SettingsContent labels={labels} currentUser={currentUser} />;
 }
