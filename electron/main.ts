@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import path from "node:path";
-import { app, BrowserWindow, dialog } from "electron";
+import { app, BrowserWindow, dialog, shell } from "electron";
 
 const isDev = process.env.SELF_BOARD_DEV === "1";
 const DEV_PORT = 3000;
@@ -82,6 +82,22 @@ async function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  // Render edilen markdown içeriğindeki harici linkler (target="_blank") pencereyi
+  // ele geçirmesin; OS'nin varsayılan tarayıcısında açılsın.
+  mainWindow.webContents.setWindowOpenHandler(({ url: targetUrl }) => {
+    void shell.openExternal(targetUrl);
+    return { action: "deny" };
+  });
+
+  // Aynı pencere içinde uygulamanın kendi origin'i dışına bir navigasyon denenirse
+  // (ör. target'sız bir link) yine harici tarayıcıya yönlendir, pencereyi koru.
+  mainWindow.webContents.on("will-navigate", (event, targetUrl) => {
+    if (new URL(targetUrl).origin !== new URL(url).origin) {
+      event.preventDefault();
+      void shell.openExternal(targetUrl);
+    }
   });
 
   await mainWindow.loadURL(url);

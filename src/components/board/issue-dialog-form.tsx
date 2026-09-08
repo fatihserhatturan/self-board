@@ -11,8 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useLocale } from "@/components/locale-provider";
+import { RichTextEditor } from "@/components/board/rich-text-editor";
 import type { IssueFormValues } from "@/lib/actions/issues";
 import type { IssueLabel, Person } from "@/lib/data/issues";
 import { priorityLevels, statusStates } from "@/lib/token-manifest";
@@ -62,11 +62,10 @@ export function IssueDialogForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="issue-description">{t("issueForm.description.label")}</Label>
-        <Textarea
-          id="issue-description"
-          value={values.description}
-          onChange={(e) => update("description", e.target.value)}
+        <Label>{t("issueForm.description.label")}</Label>
+        <RichTextEditor
+          content={values.description}
+          onChange={(v) => update("description", v)}
           placeholder={t("issueForm.description.placeholder")}
         />
       </div>

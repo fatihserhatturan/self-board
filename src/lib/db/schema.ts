@@ -39,7 +39,31 @@ CREATE TABLE IF NOT EXISTS issue_labels (
   PRIMARY KEY (issue_id, label_id)
 );
 
+CREATE TABLE IF NOT EXISTS issue_notes (
+  id         TEXT PRIMARY KEY,
+  issue_id   TEXT NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+  body       TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS attachments (
+  id         TEXT PRIMARY KEY,
+  mime_type  TEXT NOT NULL,
+  data       BLOB NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS link_previews (
+  url         TEXT PRIMARY KEY,
+  title       TEXT,
+  description TEXT,
+  image       TEXT,
+  favicon     TEXT,
+  fetched_at  TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_issues_team_status ON issues(team_id, status);
+CREATE INDEX IF NOT EXISTS idx_issue_notes_issue ON issue_notes(issue_id, created_at);
 `;
 
 export function ensureSchema(db: DatabaseSync) {

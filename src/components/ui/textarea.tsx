@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import type { TextareaHTMLAttributes } from "react";
+import { forwardRef, type TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const textareaVariants = cva(
@@ -27,8 +27,15 @@ export interface TextareaProps
   extends TextareaHTMLAttributes<HTMLTextAreaElement>,
     VariantProps<typeof textareaVariants> {}
 
-export function Textarea({ className, textareaSize, invalid, ...props }: TextareaProps) {
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
+  { className, textareaSize, invalid, ...props },
+  ref,
+) {
   return (
-    <textarea className={cn(textareaVariants({ textareaSize, invalid }), className)} {...props} />
+    <textarea
+      ref={ref}
+      className={cn(textareaVariants({ textareaSize, invalid }), className)}
+      {...props}
+    />
   );
-}
+});

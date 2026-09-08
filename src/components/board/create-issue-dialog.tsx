@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
 import { IssueDialogForm } from "@/components/board/issue-dialog-form";
@@ -72,18 +73,20 @@ export function CreateIssueDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg">
-        <DialogTitle>{t("common.newIssue")}</DialogTitle>
-        <div className="mt-4">
-          <IssueDialogForm
-            values={values}
-            onChange={setValues}
-            users={users}
-            labels={labels}
-            titleError={titleError}
-          />
-        </div>
-        <div className="mt-6 flex justify-end gap-2">
+      <DialogContent size="xl" className="flex h-[85vh] flex-col overflow-hidden">
+        <DialogTitle className="shrink-0">{t("common.newIssue")}</DialogTitle>
+        <ScrollArea className="mt-4 min-h-0 flex-1">
+          <div className="px-3">
+            <IssueDialogForm
+              values={values}
+              onChange={setValues}
+              users={users}
+              labels={labels}
+              titleError={titleError}
+            />
+          </div>
+        </ScrollArea>
+        <div className="mt-4 flex shrink-0 justify-end gap-2 border-t border-border-default pt-4">
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             {t("common.cancel")}
           </Button>

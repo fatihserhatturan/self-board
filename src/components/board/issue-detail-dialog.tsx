@@ -4,9 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Divider } from "@/components/ui/divider";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
 import { IssueDialogForm } from "@/components/board/issue-dialog-form";
+import { IssueNotes } from "@/components/board/issue-notes";
 import { updateIssue, type IssueFormValues } from "@/lib/actions/issues";
 import type { BoardIssue, IssueLabel, Person } from "@/lib/data/issues";
 
@@ -73,19 +76,23 @@ export function IssueDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg">
+      <DialogContent size="xl" className="flex h-[85vh] flex-col overflow-hidden">
         <DialogTitle className="sr-only">{t("issueDetailDialog.srTitle")}</DialogTitle>
-        <span className="text-mini text-text-tertiary">{issue.id}</span>
-        <div className="mt-2">
-          <IssueDialogForm
-            values={values}
-            onChange={setValues}
-            users={users}
-            labels={labels}
-            titleError={titleError}
-          />
-        </div>
-        <div className="mt-6 flex justify-end gap-2">
+        <span className="shrink-0 text-mini text-text-tertiary">{issue.id}</span>
+        <ScrollArea className="mt-2 min-h-0 flex-1">
+          <div className="flex flex-col px-3">
+            <IssueDialogForm
+              values={values}
+              onChange={setValues}
+              users={users}
+              labels={labels}
+              titleError={titleError}
+            />
+            <Divider className="my-4" />
+            <IssueNotes issueId={issue.id} />
+          </div>
+        </ScrollArea>
+        <div className="mt-4 flex shrink-0 justify-end gap-2 border-t border-border-default pt-4">
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             {t("common.cancel")}
           </Button>
