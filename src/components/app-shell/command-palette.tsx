@@ -2,14 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
-import {
-  FolderKanban,
-  Inbox,
-  Layers,
-  ListTodo,
-  RotateCw,
-  Settings,
-} from "lucide-react";
+import { FolderKanban, Layers, ListTodo, RotateCw, Settings, type LucideIcon } from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -25,7 +18,7 @@ import { DEFAULT_TEAM } from "@/lib/app-shell-data";
 interface NavCommand {
   label: string;
   href: Route;
-  icon: typeof Inbox;
+  icon: LucideIcon;
 }
 
 export function CommandPalette() {
@@ -39,7 +32,6 @@ export function CommandPalette() {
   }
 
   const workspaceCommands: NavCommand[] = [
-    { label: t("nav.inbox"), href: "/inbox", icon: Inbox },
     { label: t("nav.myIssues"), href: "/my-issues", icon: ListTodo },
     { label: t("nav.projects"), href: "/projects", icon: FolderKanban },
     { label: t("nav.views"), href: "/views", icon: Layers },

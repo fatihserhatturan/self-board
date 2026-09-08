@@ -1,5 +1,5 @@
-import { getIssues, getLabels, getUsers } from "@/lib/data/issues";
-import { CURRENT_USER, DEFAULT_TEAM } from "@/lib/app-shell-data";
+import { getCurrentUser, getIssues, getLabels, getUsers } from "@/lib/data/issues";
+import { DEFAULT_TEAM } from "@/lib/app-shell-data";
 import { IssueWorkspace } from "@/components/board/issue-workspace";
 
 // Bu route artık her istekte canlı SQLite state'i okuyor — build-time statik
@@ -7,8 +7,12 @@ import { IssueWorkspace } from "@/components/board/issue-workspace";
 export const dynamic = "force-dynamic";
 
 export default async function MyIssuesPage() {
-  const [allIssues, users, labels] = await Promise.all([getIssues(), getUsers(), getLabels()]);
-  const currentUser = users.find((u) => u.email === CURRENT_USER.email);
+  const [allIssues, users, labels, currentUser] = await Promise.all([
+    getIssues(),
+    getUsers(),
+    getLabels(),
+    getCurrentUser(),
+  ]);
   const myIssues = currentUser
     ? allIssues.filter((issue) => issue.assignee?.id === currentUser.id)
     : [];

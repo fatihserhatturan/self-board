@@ -6,6 +6,7 @@ export interface SeedPerson {
   id: string;
   name: string;
   email: string;
+  isCurrent?: boolean;
 }
 
 export interface SeedLabel {
@@ -27,7 +28,7 @@ export interface SeedIssue {
 }
 
 export const seedPeople: SeedPerson[] = [
-  { id: "fatih-turan", name: "Fatih Turan", email: "turan.fatih@dgpaysit.com" },
+  { id: "fatih-turan", name: "Fatih Turan", email: "turan.fatih@dgpaysit.com", isCurrent: true },
   { id: "ada-lovelace", name: "Ada Lovelace", email: "ada.lovelace@example.com" },
   { id: "grace-hopper", name: "Grace Hopper", email: "grace.hopper@example.com" },
   { id: "linus-torvalds", name: "Linus Torvalds", email: "linus.torvalds@example.com" },

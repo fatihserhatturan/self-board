@@ -6,8 +6,17 @@ import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from 
 import { ExternalLink } from "lucide-react";
 import { getLinkPreview, type LinkPreviewData } from "@/lib/actions/link-preview";
 
+function getHostname(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
 function LinkPreviewView({ node }: ReactNodeViewProps) {
   const url = node.attrs.url as string;
+  const hostname = getHostname(url);
   const [data, setData] = useState<LinkPreviewData | null>(null);
   const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
   const [prevUrl, setPrevUrl] = useState(url);
@@ -48,7 +57,9 @@ function LinkPreviewView({ node }: ReactNodeViewProps) {
         {status === "error" && (
           <>
             <ExternalLink className="size-4 shrink-0 text-text-tertiary" />
-            <span className="truncate text-small text-text-primary">{url}</span>
+            <span className="min-w-0 flex-1 truncate text-small text-text-primary">
+              {hostname}
+            </span>
           </>
         )}
         {status === "ok" && data && (
@@ -59,7 +70,7 @@ function LinkPreviewView({ node }: ReactNodeViewProps) {
             )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-small font-medium text-text-primary">
-                {data.title ?? url}
+                {data.title ?? hostname}
               </p>
               {data.description && (
                 <p className="truncate text-mini text-text-tertiary">{data.description}</p>
@@ -69,7 +80,7 @@ function LinkPreviewView({ node }: ReactNodeViewProps) {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={data.favicon} alt="" className="size-3.5" />
                 )}
-                <span className="truncate">{url}</span>
+                <span className="min-w-0 truncate">{hostname}</span>
               </div>
             </div>
           </>

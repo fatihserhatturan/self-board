@@ -1,5 +1,4 @@
 export const tr = {
-  "nav.inbox": "Inbox",
   "nav.myIssues": "My Issues",
   "nav.projects": "Projects",
   "nav.views": "Views",
@@ -21,7 +20,6 @@ export const tr = {
   "workspaceSwitcher.inviteUser": "Kullanıcı davet et",
   "commandPalette.placeholder": "Bir komut ara veya sayfaya git...",
   "commandPalette.noResults": "Sonuç bulunamadı.",
-  "emptyState.inbox.title": "Gelen kutunuz boş",
   "emptyState.issues.title": "Henüz issue yok",
   "emptyState.issues.action": "Yeni issue oluştur",
   "emptyState.projects.title": "Henüz proje yok",

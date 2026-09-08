@@ -1,7 +1,6 @@
 import type { tr } from "@/lib/i18n/translations/tr";
 
 export const en: Record<keyof typeof tr, string> = {
-  "nav.inbox": "Inbox",
   "nav.myIssues": "My Issues",
   "nav.projects": "Projects",
   "nav.views": "Views",
@@ -23,7 +22,6 @@ export const en: Record<keyof typeof tr, string> = {
   "workspaceSwitcher.inviteUser": "Invite user",
   "commandPalette.placeholder": "Search a command or jump to a page...",
   "commandPalette.noResults": "No results found.",
-  "emptyState.inbox.title": "Your inbox is empty",
   "emptyState.issues.title": "No issues yet",
   "emptyState.issues.action": "Create new issue",
   "emptyState.projects.title": "No projects yet",

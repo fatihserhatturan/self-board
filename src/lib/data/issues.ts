@@ -141,6 +141,14 @@ export async function getUsers(): Promise<Person[]> {
   });
 }
 
+export async function getCurrentUser(): Promise<Person | null> {
+  const db = getDb();
+  const row = db.prepare("SELECT id, name, email FROM users WHERE is_current = 1 LIMIT 1").get();
+  if (!row) return null;
+  const r = row as Record<string, unknown>;
+  return { id: asString(r.id), name: asString(r.name), email: asString(r.email) };
+}
+
 export async function getLabels(): Promise<IssueLabel[]> {
   const db = getDb();
   const rows = db.prepare("SELECT id, name, color FROM labels ORDER BY name ASC").all();

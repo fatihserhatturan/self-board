@@ -16,11 +16,6 @@ export const DEFAULT_TEAM: Team = {
 
 export const TEAMS: Team[] = [DEFAULT_TEAM];
 
-export const CURRENT_USER = {
-  name: "Fatih Turan",
-  email: "turan.fatih@dgpaysit.com",
-};
-
 export const WORKSPACE = {
   name: "self-board",
 };

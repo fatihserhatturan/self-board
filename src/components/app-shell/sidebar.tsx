@@ -3,7 +3,6 @@
 import Link from "next/link";
 import {
   FolderKanban,
-  Inbox,
   Layers,
   ListTodo,
   PanelLeftClose,
@@ -23,10 +22,15 @@ import { WorkspaceSwitcher } from "@/components/app-shell/workspace-switcher";
 import { useAppShell } from "@/components/app-shell/app-shell-provider";
 import { LanguageToggle } from "@/components/language-toggle";
 import { useLocale } from "@/components/locale-provider";
-import { CURRENT_USER, TEAMS, WORKSPACE } from "@/lib/app-shell-data";
+import { TEAMS, WORKSPACE } from "@/lib/app-shell-data";
+import type { Person } from "@/lib/data/issues";
 import { cn } from "@/lib/utils";
 
-export function Sidebar() {
+export interface SidebarProps {
+  currentUser: Person | null;
+}
+
+export function Sidebar({ currentUser }: SidebarProps) {
   const { sidebarCollapsed, toggleSidebar, setCommandOpen, setCreateIssueOpen } = useAppShell();
   const { t } = useLocale();
 
@@ -67,7 +71,6 @@ export function Sidebar() {
         <ScrollArea className="min-h-0 flex-1">
           <div className="flex flex-col gap-4 px-2 pb-4">
             <div className="flex flex-col gap-0.5">
-              <SidebarNavItem href="/inbox" icon={Inbox} label={t("nav.inbox")} />
               <SidebarNavItem href="/my-issues" icon={ListTodo} label={t("nav.myIssues")} />
             </div>
 
@@ -93,9 +96,9 @@ export function Sidebar() {
         <Divider />
 
         <div className="flex items-center gap-2 p-2">
-          <Avatar name={CURRENT_USER.name} size="sm" />
+          <Avatar name={currentUser?.name ?? ""} size="sm" />
           <span className="flex-1 truncate text-small text-text-primary">
-            {CURRENT_USER.name}
+            {currentUser?.name}
           </span>
           <LanguageToggle />
           <Tooltip content={t("common.settings")}>
