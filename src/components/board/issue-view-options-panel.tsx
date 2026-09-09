@@ -5,22 +5,13 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { useLocale } from "@/components/locale-provider";
+import {
+  DEFAULT_VIEW_OPTIONS,
+  type IssueSortKey,
+  type IssueViewOptions,
+} from "@/lib/board/issue-view-config";
 
-export type IssueSortKey = "created" | "priority" | "title";
-
-export interface IssueViewOptions {
-  sortKey: IssueSortKey;
-  showAssignee: boolean;
-  showLabels: boolean;
-  showPriority: boolean;
-}
-
-export const DEFAULT_VIEW_OPTIONS: IssueViewOptions = {
-  sortKey: "created",
-  showAssignee: true,
-  showLabels: true,
-  showPriority: true,
-};
+export { DEFAULT_VIEW_OPTIONS, type IssueSortKey, type IssueViewOptions };
 
 const SORT_KEYS: IssueSortKey[] = ["created", "priority", "title"];
 

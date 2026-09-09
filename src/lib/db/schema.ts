@@ -63,8 +63,19 @@ CREATE TABLE IF NOT EXISTS link_previews (
   fetched_at  TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS views (
+  id           TEXT PRIMARY KEY,
+  team_id      TEXT NOT NULL REFERENCES teams(id),
+  name         TEXT NOT NULL,
+  layout       TEXT NOT NULL CHECK (layout IN ('list','board')),
+  filters_json TEXT NOT NULL,
+  options_json TEXT NOT NULL,
+  created_at   TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_issues_team_status ON issues(team_id, status);
 CREATE INDEX IF NOT EXISTS idx_issue_notes_issue ON issue_notes(issue_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_views_team ON views(team_id);
 `;
 
 const LEGACY_CURRENT_USER_EMAIL = "turan.fatih@dgpaysit.com";

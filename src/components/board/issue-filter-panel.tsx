@@ -8,22 +8,11 @@ import type { StatusState } from "@/components/ui/status-icon";
 import { useLocale } from "@/components/locale-provider";
 import type { IssueLabel, Person } from "@/lib/data/issues";
 import { priorityLevels, statusStates } from "@/lib/token-manifest";
+import { EMPTY_FILTER_CRITERIA, type IssueFilterCriteria } from "@/lib/board/issue-view-config";
+
+export { EMPTY_FILTER_CRITERIA, type IssueFilterCriteria };
 
 const UNASSIGNED = "unassigned";
-
-export interface IssueFilterCriteria {
-  statuses: StatusState[];
-  priorities: PriorityLevel[];
-  assigneeIds: string[];
-  labelIds: string[];
-}
-
-export const EMPTY_FILTER_CRITERIA: IssueFilterCriteria = {
-  statuses: [],
-  priorities: [],
-  assigneeIds: [],
-  labelIds: [],
-};
 
 export interface IssueFilterPanelProps {
   criteria: IssueFilterCriteria;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ListFilter, ListTodo, SlidersHorizontal } from "lucide-react";
 import { Board } from "@/components/board/board";
 import { CreateIssueDialog } from "@/components/board/create-issue-dialog";
@@ -17,6 +17,7 @@ import {
   type IssueViewOptions,
 } from "@/components/board/issue-view-options-panel";
 import { TopBar, type TopBarView } from "@/components/app-shell/top-bar";
+import { SaveViewPopover } from "@/components/board/save-view-popover";
 import type { PriorityLevel } from "@/components/ui/priority-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useLocale } from "@/components/locale-provider";
 import type { TranslationKey } from "@/lib/i18n/types";
 import type { BoardIssue, IssueLabel, Person } from "@/lib/data/issues";
+import type { SavedView } from "@/lib/data/views";
+import { countActiveFilters } from "@/lib/board/filter-summary";
 import { useLocalStorageState } from "@/lib/use-local-storage-state";
 
 const PRIORITY_RANK: Record<PriorityLevel, number> = {
@@ -43,6 +46,7 @@ export interface IssueWorkspaceProps {
   users: Person[];
   labels: IssueLabel[];
   defaultAssigneeId?: string | null;
+  initialView?: Pick<SavedView, "layout" | "filters" | "options">;
 }
 
 export function IssueWorkspace({
@@ -53,9 +57,10 @@ export function IssueWorkspace({
   users,
   labels,
   defaultAssigneeId,
+  initialView,
 }: IssueWorkspaceProps) {
   const { t } = useLocale();
-  const [view, setView] = useState<TopBarView>("list");
+  const [view, setView] = useState<TopBarView>(initialView?.layout ?? "list");
 
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -63,7 +68,9 @@ export function IssueWorkspace({
   const [detailOpen, setDetailOpen] = useState(false);
 
   const [filterOpen, setFilterOpen] = useState(false);
-  const [filterCriteria, setFilterCriteria] = useState<IssueFilterCriteria>(EMPTY_FILTER_CRITERIA);
+  const [filterCriteria, setFilterCriteria] = useState<IssueFilterCriteria>(
+    initialView?.filters ?? EMPTY_FILTER_CRITERIA,
+  );
 
   const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
   const [viewOptions, setViewOptions] = useLocalStorageState<IssueViewOptions>(
@@ -78,6 +85,14 @@ export function IssueWorkspace({
       }
     },
   );
+
+  // Kaydedilmiş bir view açıldığında, o view'ın anlık görüntüsünü kalıcı global
+  // tercihin üzerine bir kerelik uygular — Linear'daki gibi görünüm seçenekleri
+  // view'ın bir parçası olarak saklanıyor.
+  useEffect(() => {
+    if (initialView?.options) setViewOptions(initialView.options);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function openDetail(issue: BoardIssue) {
     setDetailIssue(issue);
@@ -118,11 +133,7 @@ export function IssueWorkspace({
     return arr;
   }, [filteredIssues, viewOptions.sortKey]);
 
-  const activeFilterCount =
-    filterCriteria.statuses.length +
-    filterCriteria.priorities.length +
-    filterCriteria.assigneeIds.length +
-    filterCriteria.labelIds.length;
+  const activeFilterCount = countActiveFilters(filterCriteria);
 
   return (
     <>
@@ -172,6 +183,11 @@ export function IssueWorkspace({
               <IssueViewOptionsPanel options={viewOptions} onChange={setViewOptions} />
             </PopoverContent>
           </Popover>
+        }
+        saveViewTrigger={
+          <SaveViewPopover
+            input={{ teamId, layout: view, filters: filterCriteria, options: viewOptions }}
+          />
         }
       />
 

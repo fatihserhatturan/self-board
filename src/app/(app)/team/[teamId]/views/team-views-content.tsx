@@ -1,17 +1,111 @@
 "use client";
 
-import { Layers } from "lucide-react";
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Layers, Trash2 } from "lucide-react";
 import { TopBar } from "@/components/app-shell/top-bar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
 import { DEFAULT_TEAM } from "@/lib/app-shell-data";
+import { deleteView, renameView } from "@/lib/actions/views";
+import type { SavedView } from "@/lib/data/views";
+import { countActiveFilters } from "@/lib/board/filter-summary";
 
-export function TeamViewsContent() {
+export interface TeamViewsContentProps {
+  teamId: string;
+  views: SavedView[];
+}
+
+export function TeamViewsContent({ teamId, views: initialViews }: TeamViewsContentProps) {
   const { t } = useLocale();
+  const router = useRouter();
+  const [views, setViews] = useState(initialViews);
+
+  async function handleRename(view: SavedView, name: string) {
+    if (!name.trim() || name === view.name) return;
+    setViews((prev) => prev.map((v) => (v.id === view.id ? { ...v, name } : v)));
+    const result = await renameView(view.id, teamId, name);
+    if (!result.ok) {
+      setViews((prev) => prev.map((v) => (v.id === view.id ? view : v)));
+      toast.error(t("views.renameError"));
+    }
+  }
+
+  async function handleDelete(view: SavedView) {
+    const previous = views;
+    setViews((prev) => prev.filter((v) => v.id !== view.id));
+    const result = await deleteView(view.id, teamId);
+    if (!result.ok) {
+      setViews(previous);
+      toast.error(t("views.deleteError"));
+    }
+  }
+
   return (
     <>
-      <TopBar title={t("nav.views")} breadcrumb={DEFAULT_TEAM.name} />
-      <EmptyState icon={Layers} title={t("emptyState.views.title")} />
+      <TopBar
+        title={t("nav.views")}
+        breadcrumb={DEFAULT_TEAM.name}
+        primaryActionLabel={t("page.views.newAction")}
+        onPrimaryAction={() => router.push(`/team/${teamId}/issues`)}
+      />
+
+      {views.length === 0 ? (
+        <EmptyState
+          icon={Layers}
+          title={t("emptyState.views.title")}
+          action={{
+            label: t("page.views.newAction"),
+            onClick: () => router.push(`/team/${teamId}/issues`),
+          }}
+        />
+      ) : (
+        <div className="flex flex-col gap-2 p-4">
+          {views.map((view) => {
+            const filterCount = countActiveFilters(view.filters);
+            return (
+              <div
+                key={view.id}
+                className="flex items-center gap-2 rounded-lg border border-border-default p-3"
+              >
+                <Input
+                  className="flex-1"
+                  defaultValue={view.name}
+                  key={`${view.id}-${view.name}`}
+                  onBlur={(e) => handleRename(view, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                  }}
+                />
+                <Badge size="sm" color="grey">
+                  {t(view.layout === "board" ? "topbar.tab.board" : "topbar.tab.list")}
+                </Badge>
+                <span className="text-mini text-text-tertiary">
+                  {filterCount} {t("views.card.filterCount")}
+                </span>
+                <Button variant="secondary" size="sm" asChild>
+                  <Link href={`/team/${teamId}/issues?view=${view.id}`}>
+                    {t("views.card.openAction")}
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t("views.card.deleteAction")}
+                  onClick={() => handleDelete(view)}
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }

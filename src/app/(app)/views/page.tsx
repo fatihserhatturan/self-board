@@ -1,16 +1,9 @@
-"use client";
+import { redirect } from "next/navigation";
+import { DEFAULT_TEAM } from "@/lib/app-shell-data";
 
-import { Layers } from "lucide-react";
-import { TopBar } from "@/components/app-shell/top-bar";
-import { EmptyState } from "@/components/ui/empty-state";
-import { useLocale } from "@/components/locale-provider";
-
+// Tek takım (`DEFAULT_TEAM`) olduğu için workspace-seviyesi Views sayfası,
+// takım-seviyesindeki gerçek uygulamaya yönlendiriyor — iki ayrı boş sayfa
+// mantığı tekrarlamak yerine.
 export default function ViewsPage() {
-  const { t } = useLocale();
-  return (
-    <>
-      <TopBar title={t("nav.views")} />
-      <EmptyState icon={Layers} title={t("emptyState.views.title")} />
-    </>
-  );
+  redirect(`/team/${DEFAULT_TEAM.slug}/views`);
 }

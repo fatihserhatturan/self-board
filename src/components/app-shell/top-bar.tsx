@@ -20,6 +20,7 @@ export interface TopBarProps {
   primaryActionDisabled?: boolean;
   filterTrigger?: ReactNode;
   viewOptionsTrigger?: ReactNode;
+  saveViewTrigger?: ReactNode;
 }
 
 export function TopBar({
@@ -32,6 +33,7 @@ export function TopBar({
   primaryActionDisabled,
   filterTrigger,
   viewOptionsTrigger,
+  saveViewTrigger,
 }: TopBarProps) {
   const { sidebarCollapsed, toggleSidebar } = useAppShell();
   const { t } = useLocale();
@@ -68,6 +70,7 @@ export function TopBar({
         )}
         {filterTrigger}
         {viewOptionsTrigger}
+        {saveViewTrigger}
         {primaryActionLabel &&
           (primaryActionDisabled ? (
             <Tooltip content={t("common.comingSoon")}>
