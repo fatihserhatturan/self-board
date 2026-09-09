@@ -22,7 +22,7 @@ interface NavCommand {
 }
 
 export function CommandPalette() {
-  const { commandOpen, setCommandOpen } = useAppShell();
+  const { commandOpen, setCommandOpen, issues } = useAppShell();
   const { t } = useLocale();
   const router = useRouter();
 
@@ -74,6 +74,18 @@ export function CommandPalette() {
             <CommandItem key={cmd.href} value={cmd.label} onSelect={() => go(cmd.href)}>
               <cmd.icon className="size-3.5 text-text-tertiary" />
               {cmd.label}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+        <CommandGroup heading={t("commandPalette.group.issues")}>
+          {issues.map((issue) => (
+            <CommandItem
+              key={issue.id}
+              value={`${issue.id} ${issue.title}`}
+              onSelect={() => go(`/team/${issue.teamId}/issues?open=${issue.id}`)}
+            >
+              <span className="text-text-tertiary">{issue.id}</span>
+              {issue.title}
             </CommandItem>
           ))}
         </CommandGroup>

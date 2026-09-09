@@ -1,6 +1,7 @@
 "use server";
 
 import { getDb } from "@/lib/db/client";
+import { linkAttachmentsToIssue } from "@/lib/db/attachment-links";
 import type { IssueNote } from "@/lib/data/issue-notes";
 import type { ActionResult } from "@/lib/actions/issues";
 
@@ -43,6 +44,8 @@ export async function addIssueNote(
     trimmed,
     createdAt,
   );
+
+  linkAttachmentsToIssue(db, issueId, [trimmed]);
 
   return { ok: true, data: { id, issueId, body: trimmed, createdAt } };
 }

@@ -6,6 +6,7 @@ import type { PriorityLevel } from "@/components/ui/priority-icon";
 import type { StatusState } from "@/components/ui/status-icon";
 import { TEAMS } from "@/lib/app-shell-data";
 import { getDb } from "@/lib/db/client";
+import { linkAttachmentsToIssue } from "@/lib/db/attachment-links";
 
 export interface IssueFormValues {
   title: string;
@@ -63,6 +64,8 @@ export async function createIssue(
     for (const labelId of input.labelIds) insertLabel.run(id, labelId);
   }
 
+  linkAttachmentsToIssue(db, id, [input.description]);
+
   revalidatePath(`/team/${teamId}/issues`);
   return { ok: true, data: { id } };
 }
@@ -109,6 +112,31 @@ export async function updateIssue(
   if (input.labelIds.length > 0) {
     const insertLabel = db.prepare("INSERT INTO issue_labels (issue_id, label_id) VALUES (?, ?)");
     for (const labelId of input.labelIds) insertLabel.run(issueId, labelId);
+  }
+
+  linkAttachmentsToIssue(db, issueId, [input.description]);
+
+  revalidatePath(`/team/${teamId}/issues`);
+  return { ok: true, data: { id: issueId } };
+}
+
+export async function deleteIssue(
+  issueId: string,
+  teamId: string,
+): Promise<ActionResult<{ id: string }>> {
+  const db = getDb();
+  db.exec("BEGIN");
+  try {
+    db.prepare("DELETE FROM issue_labels WHERE issue_id = ?").run(issueId);
+    db.prepare("DELETE FROM issue_notes WHERE issue_id = ?").run(issueId);
+    db.prepare("DELETE FROM attachments WHERE issue_id = ?").run(issueId);
+    const result = db.prepare("DELETE FROM issues WHERE id = ?").run(issueId);
+    db.exec("COMMIT");
+
+    if (Number(result.changes) === 0) return { ok: false, error: "issue-not-found" };
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
   }
 
   revalidatePath(`/team/${teamId}/issues`);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ListFilter, ListTodo, SlidersHorizontal } from "lucide-react";
 import { Board } from "@/components/board/board";
 import { CreateIssueDialog } from "@/components/board/create-issue-dialog";
@@ -46,7 +47,7 @@ export interface IssueWorkspaceProps {
   users: Person[];
   labels: IssueLabel[];
   defaultAssigneeId?: string | null;
-  initialView?: Pick<SavedView, "layout" | "filters" | "options">;
+  initialView?: SavedView;
 }
 
 export function IssueWorkspace({
@@ -60,12 +61,20 @@ export function IssueWorkspace({
   initialView,
 }: IssueWorkspaceProps) {
   const { t } = useLocale();
+  const [loadedView] = useState<SavedView | null>(initialView ?? null);
   const [view, setView] = useState<TopBarView>(initialView?.layout ?? "list");
 
   const [createOpen, setCreateOpen] = useState(false);
 
-  const [detailIssue, setDetailIssue] = useState<BoardIssue | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
+  // Komut paletinden `?open={issueId}` ile gelindiğinde ilgili issue'yu ilk render'da açar.
+  const searchParams = useSearchParams();
+  const openIssueId = searchParams.get("open");
+  const initialOpenIssue = openIssueId
+    ? (issues.find((issue) => issue.id === openIssueId) ?? null)
+    : null;
+
+  const [detailIssue, setDetailIssue] = useState<BoardIssue | null>(initialOpenIssue);
+  const [detailOpen, setDetailOpen] = useState(initialOpenIssue != null);
 
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterCriteria, setFilterCriteria] = useState<IssueFilterCriteria>(
@@ -187,6 +196,7 @@ export function IssueWorkspace({
         saveViewTrigger={
           <SaveViewPopover
             input={{ teamId, layout: view, filters: filterCriteria, options: viewOptions }}
+            loadedView={loadedView}
           />
         }
       />

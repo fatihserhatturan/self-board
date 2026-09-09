@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -10,7 +10,7 @@ import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
 import { IssueDialogForm } from "@/components/board/issue-dialog-form";
 import { IssueNotes } from "@/components/board/issue-notes";
-import { updateIssue, type IssueFormValues } from "@/lib/actions/issues";
+import { deleteIssue, updateIssue, type IssueFormValues } from "@/lib/actions/issues";
 import type { BoardIssue, IssueLabel, Person } from "@/lib/data/issues";
 
 export interface IssueDetailDialogProps {
@@ -44,10 +44,12 @@ export function IssueDetailDialog({
   const [values, setValues] = useState<IssueFormValues | null>(issue ? toFormValues(issue) : null);
   const [titleError, setTitleError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [prevIssueId, setPrevIssueId] = useState(issue?.id ?? null);
 
   if ((issue?.id ?? null) !== prevIssueId) {
     setPrevIssueId(issue?.id ?? null);
+    setConfirmingDelete(false);
     if (issue) {
       setValues(toFormValues(issue));
       setTitleError(undefined);
@@ -72,6 +74,35 @@ export function IssueDetailDialog({
     router.refresh();
   }
 
+  useEffect(() => {
+    if (!confirmingDelete) return;
+    const timeout = setTimeout(() => setConfirmingDelete(false), 3000);
+    return () => clearTimeout(timeout);
+  }, [confirmingDelete]);
+
+  function handleDeleteClick() {
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      return;
+    }
+    void handleDelete();
+  }
+
+  async function handleDelete() {
+    if (!issue) return;
+    setSubmitting(true);
+    const result = await deleteIssue(issue.id, issue.teamId);
+    setSubmitting(false);
+    setConfirmingDelete(false);
+    if (!result.ok) {
+      toast.error(t("toast.issue.deleteError"));
+      return;
+    }
+    toast.success(t("toast.issue.deleted"));
+    onOpenChange(false);
+    router.refresh();
+  }
+
   if (!issue || !values) return null;
 
   return (
@@ -92,7 +123,15 @@ export function IssueDetailDialog({
             <IssueNotes issueId={issue.id} />
           </div>
         </ScrollArea>
-        <div className="mt-4 flex shrink-0 justify-end gap-2 border-t border-border-default pt-4">
+        <div className="mt-4 flex shrink-0 items-center justify-end gap-2 border-t border-border-default pt-4">
+          <Button
+            variant={confirmingDelete ? "destructive" : "secondary"}
+            className="mr-auto"
+            onClick={handleDeleteClick}
+            loading={submitting && confirmingDelete}
+          >
+            {confirmingDelete ? t("issueDetailDialog.confirmDelete") : t("issueDetailDialog.delete")}
+          </Button>
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             {t("common.cancel")}
           </Button>

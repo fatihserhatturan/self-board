@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useLocalStorageState } from "@/lib/use-local-storage-state";
+import type { BoardIssue } from "@/lib/data/issues";
 
 export interface AppShellContextValue {
   sidebarCollapsed: boolean;
@@ -10,6 +11,7 @@ export interface AppShellContextValue {
   setCommandOpen: (open: boolean) => void;
   createIssueOpen: boolean;
   setCreateIssueOpen: (open: boolean) => void;
+  issues: BoardIssue[];
 }
 
 const AppShellContext = createContext<AppShellContextValue | null>(null);
@@ -22,7 +24,13 @@ export function useAppShell(): AppShellContextValue {
   return ctx;
 }
 
-export function AppShellProvider({ children }: { children: ReactNode }) {
+export function AppShellProvider({
+  children,
+  issues,
+}: {
+  children: ReactNode;
+  issues: BoardIssue[];
+}) {
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorageState(
     "self-board:sidebar-collapsed",
     false,
@@ -50,6 +58,7 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
         setCommandOpen,
         createIssueOpen,
         setCreateIssueOpen,
+        issues,
       }}
     >
       {children}

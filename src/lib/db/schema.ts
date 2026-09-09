@@ -83,6 +83,7 @@ const LEGACY_CURRENT_USER_EMAIL = "turan.fatih@dgpaysit.com";
 export function ensureSchema(db: DatabaseSync) {
   db.exec(DDL_SQL);
   ensureCurrentUserColumn(db);
+  ensureAttachmentIssueIdColumn(db);
 }
 
 /**
@@ -102,6 +103,19 @@ function ensureCurrentUserColumn(db: DatabaseSync) {
     `UPDATE users SET is_current = 1
      WHERE email = ? AND NOT EXISTS (SELECT 1 FROM users WHERE is_current = 1)`,
   ).run(LEGACY_CURRENT_USER_EMAIL);
+}
+
+/**
+ * `issue_id` kolonu attachments tablosuna sonradan eklendi (yüklenen resimleri
+ * ait oldukları issue'ya bağlayıp yetim BLOB'ları temizleyebilmek için).
+ */
+function ensureAttachmentIssueIdColumn(db: DatabaseSync) {
+  const columns = db.prepare("PRAGMA table_info(attachments)").all() as { name: string }[];
+  const hasColumn = columns.some((column) => column.name === "issue_id");
+  if (!hasColumn) {
+    db.exec("ALTER TABLE attachments ADD COLUMN issue_id TEXT REFERENCES issues(id)");
+  }
+  db.exec("CREATE INDEX IF NOT EXISTS idx_attachments_issue ON attachments(issue_id)");
 }
 
 /** Tablolar boşsa (ör. ilk çalıştırma) örnek veriyi tek transaction içinde ekler. */

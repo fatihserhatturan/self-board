@@ -51,6 +51,26 @@ export async function createView(input: CreateViewInput): Promise<ActionResult<S
   };
 }
 
+export async function updateView(
+  id: string,
+  teamId: string,
+  input: Omit<CreateViewInput, "teamId">,
+): Promise<ActionResult<{ id: string }>> {
+  const trimmed = input.name.trim();
+  if (!trimmed) return { ok: false, error: "name-required" };
+
+  const db = getDb();
+  const result = db
+    .prepare(
+      `UPDATE views SET name = ?, layout = ?, filters_json = ?, options_json = ? WHERE id = ?`,
+    )
+    .run(trimmed, input.layout, JSON.stringify(input.filters), JSON.stringify(input.options), id);
+  if (Number(result.changes) === 0) return { ok: false, error: "view-not-found" };
+
+  revalidatePath(`/team/${teamId}/views`);
+  return { ok: true, data: { id } };
+}
+
 export async function renameView(
   id: string,
   teamId: string,
