@@ -13,6 +13,7 @@ export interface IssueFormValues {
   status: StatusState;
   priority: PriorityLevel;
   assigneeId: string | null;
+  cycleId: string | null;
   labelIds: string[];
 }
 
@@ -47,11 +48,12 @@ export async function createIssue(
   const createdAt = new Date().toISOString();
 
   db.prepare(
-    `INSERT INTO issues (id, project_id, title, description, status, priority, assignee_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO issues (id, project_id, cycle_id, title, description, status, priority, assignee_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     projectId,
+    input.cycleId,
     title,
     input.description.trim() || null,
     input.status,
@@ -94,7 +96,7 @@ export async function updateIssue(
   const db = getDb();
   const result = db
     .prepare(
-      `UPDATE issues SET title = ?, description = ?, status = ?, priority = ?, assignee_id = ? WHERE id = ?`,
+      `UPDATE issues SET title = ?, description = ?, status = ?, priority = ?, assignee_id = ?, cycle_id = ? WHERE id = ?`,
     )
     .run(
       title,
@@ -102,6 +104,7 @@ export async function updateIssue(
       input.status,
       input.priority,
       input.assigneeId,
+      input.cycleId,
       issueId,
     );
 

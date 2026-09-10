@@ -34,7 +34,10 @@ export async function createProject(
   ).run(id, name, prefix, input.color, createdAt);
 
   revalidatePath("/projects");
-  return { ok: true, data: { id, name, prefix, color: input.color, hasIcon: false, createdAt } };
+  return {
+    ok: true,
+    data: { id, name, prefix, color: input.color, hasIcon: false, cycleDurationDays: 14, createdAt },
+  };
 }
 
 const ALLOWED_ICON_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
@@ -111,6 +114,10 @@ export async function deleteProject(id: string): Promise<ActionResult<{ id: stri
     ).run(id);
     db.prepare("DELETE FROM issues WHERE project_id = ?").run(id);
     db.prepare("DELETE FROM views WHERE project_id = ?").run(id);
+    db.prepare(
+      "DELETE FROM cycle_snapshots WHERE cycle_id IN (SELECT id FROM cycles WHERE project_id = ?)",
+    ).run(id);
+    db.prepare("DELETE FROM cycles WHERE project_id = ?").run(id);
     const result = db.prepare("DELETE FROM projects WHERE id = ?").run(id);
     db.exec("COMMIT");
 

@@ -19,6 +19,7 @@ export function GlobalCreateIssueDialog({ users, labels }: GlobalCreateIssueDial
       projectId={activeProjectId ?? ""}
       users={users}
       labels={labels}
+      cycles={[]}
     />
   );
 }

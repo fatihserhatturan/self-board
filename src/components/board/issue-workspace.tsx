@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ListFilter, ListTodo, SlidersHorizontal } from "lucide-react";
+import { ChartLine, ListFilter, ListTodo, SlidersHorizontal } from "lucide-react";
 import { Board } from "@/components/board/board";
 import { CreateIssueDialog } from "@/components/board/create-issue-dialog";
 import { IssueDetailDialog } from "@/components/board/issue-detail-dialog";
@@ -24,13 +24,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useAppShell } from "@/components/app-shell/app-shell-provider";
 import { useLocale } from "@/components/locale-provider";
+import { CycleSummaryPanel } from "@/components/cycles/cycle-summary-panel";
 import type { TranslationKey } from "@/lib/i18n/types";
 import type { BoardIssue, IssueLabel, Person } from "@/lib/data/issues";
+import type { Cycle, CycleSnapshot } from "@/lib/data/cycles";
 import type { SavedView } from "@/lib/data/views";
 import { countActiveFilters } from "@/lib/board/filter-summary";
+import { cycleLabel } from "@/lib/board/cycle-label";
+import { todayIsoDate } from "@/lib/board/cycle-status";
 import { useLocalStorageState } from "@/lib/use-local-storage-state";
+import { cn } from "@/lib/utils";
 
 const PRIORITY_RANK: Record<PriorityLevel, number> = {
   urgent: 0,
@@ -44,9 +50,12 @@ export interface IssueWorkspaceProps {
   titleKey: TranslationKey;
   breadcrumb?: string;
   projectId?: string;
+  cycleId?: string | null;
   issues: BoardIssue[];
   users: Person[];
   labels: IssueLabel[];
+  cycles?: Cycle[];
+  cycleSnapshots?: CycleSnapshot[];
   defaultAssigneeId?: string | null;
   initialView?: SavedView;
 }
@@ -55,15 +64,24 @@ export function IssueWorkspace({
   titleKey,
   breadcrumb,
   projectId,
+  cycleId,
   issues,
   users,
   labels,
+  cycles = [],
+  cycleSnapshots = [],
   defaultAssigneeId,
   initialView,
 }: IssueWorkspaceProps) {
   const { t } = useLocale();
   const { activeProjectId } = useAppShell();
   const resolvedProjectId = projectId ?? activeProjectId ?? "";
+  const today = useMemo(() => todayIsoDate(), []);
+  const panelCycle = cycleId ? cycles.find((cycle) => cycle.id === cycleId) : undefined;
+  const [cyclePanelOpen, setCyclePanelOpen] = useLocalStorageState(
+    "self-board:cycle-panel-open",
+    true,
+  );
   const [loadedView] = useState<SavedView | null>(initialView ?? null);
   const [view, setView] = useState<TopBarView>(initialView?.layout ?? "list");
 
@@ -106,6 +124,19 @@ export function IssueWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Cycle paneli için Cmd/Ctrl+I — Linear'daki cycle sidebar kısayolunun karşılığı.
+  useEffect(() => {
+    if (!panelCycle) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "i") {
+        event.preventDefault();
+        setCyclePanelOpen(!cyclePanelOpen);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [panelCycle, cyclePanelOpen, setCyclePanelOpen]);
+
   function openDetail(issue: BoardIssue) {
     setDetailIssue(issue);
     setDetailOpen(true);
@@ -129,6 +160,9 @@ export function IssueWorkspace({
       if (filterCriteria.labelIds.length > 0) {
         const ids = issue.labels.map((l) => l.id);
         if (!filterCriteria.labelIds.some((id) => ids.includes(id))) return false;
+      }
+      if (filterCriteria.cycleIds.length > 0) {
+        if (!issue.cycleId || !filterCriteria.cycleIds.includes(issue.cycleId)) return false;
       }
       return true;
     });
@@ -180,6 +214,7 @@ export function IssueWorkspace({
                 onClear={() => setFilterCriteria(EMPTY_FILTER_CRITERIA)}
                 users={users}
                 labels={labels}
+                cycles={cycles}
               />
             </PopoverContent>
           </Popover>
@@ -207,19 +242,51 @@ export function IssueWorkspace({
             loadedView={loadedView}
           />
         }
+        cyclePanelTrigger={
+          panelCycle && (
+            <Tooltip content={t("cycles.panel.toggle")}>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t("cycles.panel.toggle")}
+                aria-pressed={cyclePanelOpen}
+                onClick={() => setCyclePanelOpen(!cyclePanelOpen)}
+              >
+                <ChartLine className={cn("size-3.5", cyclePanelOpen && "text-accent")} />
+              </Button>
+            </Tooltip>
+          )
+        }
       />
 
-      {issues.length === 0 ? (
-        <EmptyState
-          icon={ListTodo}
-          title={t("emptyState.issues.title")}
-          action={{ label: t("emptyState.issues.action"), onClick: () => setCreateOpen(true) }}
-        />
-      ) : view === "board" ? (
-        <Board issues={sortedIssues} onOpenIssue={openDetail} viewOptions={viewOptions} />
-      ) : (
-        <IssueList issues={sortedIssues} onOpenIssue={openDetail} viewOptions={viewOptions} />
-      )}
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {issues.length === 0 ? (
+            <EmptyState
+              icon={ListTodo}
+              title={t("emptyState.issues.title")}
+              action={{ label: t("emptyState.issues.action"), onClick: () => setCreateOpen(true) }}
+            />
+          ) : view === "board" ? (
+            <Board issues={sortedIssues} onOpenIssue={openDetail} viewOptions={viewOptions} />
+          ) : (
+            <IssueList issues={sortedIssues} onOpenIssue={openDetail} viewOptions={viewOptions} />
+          )}
+        </div>
+
+        {panelCycle && cyclePanelOpen && (
+          <aside className="w-80 shrink-0 overflow-y-auto border-l border-border-default p-4">
+            <p className="mb-3 text-small font-medium text-text-primary">
+              {cycleLabel(panelCycle)}
+            </p>
+            <CycleSummaryPanel
+              cycle={panelCycle}
+              snapshots={cycleSnapshots}
+              todayIso={today}
+            />
+          </aside>
+        )}
+      </div>
 
       <CreateIssueDialog
         open={createOpen}
@@ -227,7 +294,9 @@ export function IssueWorkspace({
         projectId={resolvedProjectId}
         users={users}
         labels={labels}
+        cycles={cycles}
         defaultAssigneeId={defaultAssigneeId}
+        defaultCycleId={cycleId}
       />
 
       <IssueDetailDialog
@@ -236,6 +305,7 @@ export function IssueWorkspace({
         onOpenChange={setDetailOpen}
         users={users}
         labels={labels}
+        cycles={cycles}
       />
     </>
   );

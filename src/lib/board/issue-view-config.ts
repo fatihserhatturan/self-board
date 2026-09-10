@@ -13,6 +13,7 @@ export interface IssueFilterCriteria {
   priorities: PriorityLevel[];
   assigneeIds: string[];
   labelIds: string[];
+  cycleIds: string[];
 }
 
 export const EMPTY_FILTER_CRITERIA: IssueFilterCriteria = {
@@ -20,6 +21,7 @@ export const EMPTY_FILTER_CRITERIA: IssueFilterCriteria = {
   priorities: [],
   assigneeIds: [],
   labelIds: [],
+  cycleIds: [],
 };
 
 export type IssueSortKey = "created" | "priority" | "title";

@@ -18,6 +18,7 @@ export interface IssueLabel {
 export interface BoardIssue {
   id: string;
   projectId: string;
+  cycleId: string | null;
   title: string;
   description?: string;
   status: StatusState;
@@ -30,6 +31,7 @@ export interface BoardIssue {
 interface IssueRow {
   id: string;
   projectId: string;
+  cycleId: string | null;
   title: string;
   description: string | null;
   status: StatusState;
@@ -59,6 +61,7 @@ function toIssueRow(row: Record<string, unknown>): IssueRow {
   return {
     id: asString(row.id),
     projectId: asString(row.project_id),
+    cycleId: asNullableString(row.cycle_id),
     title: asString(row.title),
     description: asNullableString(row.description),
     status: asString(row.status) as StatusState,
@@ -85,21 +88,30 @@ function toIssueLabelRow(row: Record<string, unknown>): IssueLabelRow {
  * manuel join ediyor. `async` kalıyor (DatabaseSync sync olsa da) — arayüz
  * stabil, ileride farklı bir backend'e geçilirse çağıran taraflar etkilenmez.
  */
-export async function getIssues(projectId?: string): Promise<BoardIssue[]> {
+export async function getIssues(projectId?: string, cycleId?: string): Promise<BoardIssue[]> {
   const db = getDb();
 
+  const conditions: string[] = [];
+  const params: string[] = [];
+  if (projectId) {
+    conditions.push("i.project_id = ?");
+    params.push(projectId);
+  }
+  if (cycleId) {
+    conditions.push("i.cycle_id = ?");
+    params.push(cycleId);
+  }
+
   const issuesSql = `
-    SELECT i.id, i.project_id, i.title, i.description, i.status, i.priority,
+    SELECT i.id, i.project_id, i.cycle_id, i.title, i.description, i.status, i.priority,
            i.assignee_id, u.name AS assignee_name, u.email AS assignee_email,
            i.created_at
     FROM issues i
     LEFT JOIN users u ON u.id = i.assignee_id
-    ${projectId ? "WHERE i.project_id = ?" : ""}
+    ${conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""}
     ORDER BY i.created_at ASC
   `;
-  const rawIssueRows = projectId
-    ? db.prepare(issuesSql).all(projectId)
-    : db.prepare(issuesSql).all();
+  const rawIssueRows = db.prepare(issuesSql).all(...params);
   const issueRows = rawIssueRows.map(toIssueRow);
 
   const labelRows = db
@@ -121,6 +133,7 @@ export async function getIssues(projectId?: string): Promise<BoardIssue[]> {
   return issueRows.map((row) => ({
     id: row.id,
     projectId: row.projectId,
+    cycleId: row.cycleId,
     title: row.title,
     description: row.description ?? undefined,
     status: row.status,

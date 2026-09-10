@@ -10,14 +10,19 @@ import { useLocale } from "@/components/locale-provider";
 import { IssueDialogForm } from "@/components/board/issue-dialog-form";
 import { createIssue, type IssueFormValues } from "@/lib/actions/issues";
 import type { IssueLabel, Person } from "@/lib/data/issues";
+import type { Cycle } from "@/lib/data/cycles";
 
-function buildDefaultValues(defaultAssigneeId?: string | null): IssueFormValues {
+function buildDefaultValues(
+  defaultAssigneeId?: string | null,
+  defaultCycleId?: string | null,
+): IssueFormValues {
   return {
     title: "",
     description: "",
     status: "backlog",
     priority: "no-priority",
     assigneeId: defaultAssigneeId ?? null,
+    cycleId: defaultCycleId ?? null,
     labelIds: [],
   };
 }
@@ -28,7 +33,9 @@ export interface CreateIssueDialogProps {
   projectId: string;
   users: Person[];
   labels: IssueLabel[];
+  cycles: Cycle[];
   defaultAssigneeId?: string | null;
+  defaultCycleId?: string | null;
 }
 
 export function CreateIssueDialog({
@@ -37,11 +44,15 @@ export function CreateIssueDialog({
   projectId,
   users,
   labels,
+  cycles,
   defaultAssigneeId,
+  defaultCycleId,
 }: CreateIssueDialogProps) {
   const { t } = useLocale();
   const router = useRouter();
-  const [values, setValues] = useState<IssueFormValues>(() => buildDefaultValues(defaultAssigneeId));
+  const [values, setValues] = useState<IssueFormValues>(() =>
+    buildDefaultValues(defaultAssigneeId, defaultCycleId),
+  );
   const [titleError, setTitleError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
@@ -49,7 +60,7 @@ export function CreateIssueDialog({
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) {
-      setValues(buildDefaultValues(defaultAssigneeId));
+      setValues(buildDefaultValues(defaultAssigneeId, defaultCycleId));
       setTitleError(undefined);
     }
   }
@@ -82,6 +93,7 @@ export function CreateIssueDialog({
               onChange={setValues}
               users={users}
               labels={labels}
+              cycles={cycles}
               titleError={titleError}
             />
           </div>

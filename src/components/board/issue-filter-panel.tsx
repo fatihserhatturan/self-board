@@ -7,8 +7,10 @@ import type { PriorityLevel } from "@/components/ui/priority-icon";
 import type { StatusState } from "@/components/ui/status-icon";
 import { useLocale } from "@/components/locale-provider";
 import type { IssueLabel, Person } from "@/lib/data/issues";
+import type { Cycle } from "@/lib/data/cycles";
 import { priorityLevels, statusStates } from "@/lib/token-manifest";
 import { EMPTY_FILTER_CRITERIA, type IssueFilterCriteria } from "@/lib/board/issue-view-config";
+import { cycleLabel } from "@/lib/board/cycle-label";
 
 export { EMPTY_FILTER_CRITERIA, type IssueFilterCriteria };
 
@@ -20,6 +22,7 @@ export interface IssueFilterPanelProps {
   onClear: () => void;
   users: Person[];
   labels: IssueLabel[];
+  cycles: Cycle[];
 }
 
 export function IssueFilterPanel({
@@ -28,6 +31,7 @@ export function IssueFilterPanel({
   onClear,
   users,
   labels,
+  cycles,
 }: IssueFilterPanelProps) {
   const { t } = useLocale();
 
@@ -44,6 +48,7 @@ export function IssueFilterPanel({
     ...users.map((user) => ({ value: user.id, label: user.name })),
   ];
   const labelOptions = labels.map((label) => ({ value: label.id, label: label.name }));
+  const cycleOptions = cycles.map((cycle) => ({ value: cycle.id, label: cycleLabel(cycle) }));
 
   return (
     <div className="flex flex-col gap-3">
@@ -87,6 +92,17 @@ export function IssueFilterPanel({
           value={criteria.labelIds}
           onValueChange={(v) => onChange({ ...criteria, labelIds: v })}
           placeholder={t("issueForm.labels.placeholder")}
+          className="w-full"
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("issueForm.cycle.label")}</Label>
+        <MultiSelect
+          options={cycleOptions}
+          value={criteria.cycleIds}
+          onValueChange={(v) => onChange({ ...criteria, cycleIds: v })}
+          placeholder={t("filter.cycle.placeholder")}
           className="w-full"
         />
       </div>

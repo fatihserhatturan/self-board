@@ -12,6 +12,7 @@ import { IssueDialogForm } from "@/components/board/issue-dialog-form";
 import { IssueNotes } from "@/components/board/issue-notes";
 import { deleteIssue, updateIssue, type IssueFormValues } from "@/lib/actions/issues";
 import type { BoardIssue, IssueLabel, Person } from "@/lib/data/issues";
+import type { Cycle } from "@/lib/data/cycles";
 
 export interface IssueDetailDialogProps {
   issue: BoardIssue | null;
@@ -19,6 +20,7 @@ export interface IssueDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   users: Person[];
   labels: IssueLabel[];
+  cycles: Cycle[];
 }
 
 function toFormValues(issue: BoardIssue): IssueFormValues {
@@ -28,6 +30,7 @@ function toFormValues(issue: BoardIssue): IssueFormValues {
     status: issue.status,
     priority: issue.priority,
     assigneeId: issue.assignee?.id ?? null,
+    cycleId: issue.cycleId,
     labelIds: issue.labels.map((label) => label.id),
   };
 }
@@ -38,6 +41,7 @@ export function IssueDetailDialog({
   onOpenChange,
   users,
   labels,
+  cycles,
 }: IssueDetailDialogProps) {
   const { t } = useLocale();
   const router = useRouter();
@@ -117,6 +121,7 @@ export function IssueDetailDialog({
               onChange={setValues}
               users={users}
               labels={labels}
+              cycles={cycles}
               titleError={titleError}
             />
             <Divider className="my-4" />

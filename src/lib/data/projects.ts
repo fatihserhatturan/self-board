@@ -7,11 +7,12 @@ export interface Project {
   prefix: string;
   color: LabelColor;
   hasIcon: boolean;
+  cycleDurationDays: number;
   createdAt: string;
 }
 
 const PROJECT_SELECT = `
-  SELECT id, name, prefix, color, created_at, icon_data IS NOT NULL AS has_icon
+  SELECT id, name, prefix, color, cycle_duration_days, created_at, icon_data IS NOT NULL AS has_icon
   FROM projects
 `;
 
@@ -26,6 +27,7 @@ function toProject(row: Record<string, unknown>): Project {
     prefix: asString(row.prefix),
     color: asString(row.color) as LabelColor,
     hasIcon: Boolean(row.has_icon),
+    cycleDurationDays: Number(row.cycle_duration_days),
     createdAt: asString(row.created_at),
   };
 }

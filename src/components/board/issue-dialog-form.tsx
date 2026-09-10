@@ -15,15 +15,19 @@ import { useLocale } from "@/components/locale-provider";
 import { RichTextEditor } from "@/components/board/rich-text-editor";
 import type { IssueFormValues } from "@/lib/actions/issues";
 import type { IssueLabel, Person } from "@/lib/data/issues";
+import type { Cycle } from "@/lib/data/cycles";
+import { cycleLabel } from "@/lib/board/cycle-label";
 import { priorityLevels, statusStates } from "@/lib/token-manifest";
 
 const UNASSIGNED = "unassigned";
+const NO_CYCLE = "no-cycle";
 
 export interface IssueDialogFormProps {
   values: IssueFormValues;
   onChange: (values: IssueFormValues) => void;
   users: Person[];
   labels: IssueLabel[];
+  cycles: Cycle[];
   titleError?: string;
 }
 
@@ -32,6 +36,7 @@ export function IssueDialogForm({
   onChange,
   users,
   labels,
+  cycles,
   titleError,
 }: IssueDialogFormProps) {
   const { t } = useLocale();
@@ -46,6 +51,11 @@ export function IssueDialogForm({
   ];
 
   const labelOptions = labels.map((label) => ({ value: label.id, label: label.name }));
+
+  const cycleOptions = [
+    { value: NO_CYCLE, label: t("board.cycle.none.label") },
+    ...cycles.map((cycle) => ({ value: cycle.id, label: cycleLabel(cycle) })),
+  ];
 
   return (
     <div className="flex flex-col gap-4">
@@ -129,6 +139,17 @@ export function IssueDialogForm({
             className="w-full"
           />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("issueForm.cycle.label")}</Label>
+        <Combobox
+          options={cycleOptions}
+          value={values.cycleId ?? NO_CYCLE}
+          onValueChange={(v) => update("cycleId", v === NO_CYCLE ? null : v)}
+          placeholder={t("issueForm.cycle.placeholder")}
+          className="w-full"
+        />
       </div>
     </div>
   );

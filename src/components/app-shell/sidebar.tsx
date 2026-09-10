@@ -89,7 +89,11 @@ export function Sidebar({ currentUser }: SidebarProps) {
                 icon={Layers}
                 label={t("nav.views")}
               />
-              <SidebarNavItem href="/cycles" icon={RotateCw} label={t("nav.cycles")} />
+              <SidebarNavItem
+                href={`/cycles?project=${activeProjectId ?? ""}`}
+                icon={RotateCw}
+                label={t("nav.cycles")}
+              />
             </div>
           </div>
         </ScrollArea>

@@ -36,7 +36,7 @@ export function CommandPalette() {
     { label: t("nav.issues"), href: `/issues?project=${activeProjectId ?? ""}`, icon: ListTodo },
     { label: t("nav.projects"), href: "/projects", icon: FolderKanban },
     { label: t("nav.views"), href: `/views?project=${activeProjectId ?? ""}`, icon: Layers },
-    { label: t("nav.cycles"), href: "/cycles", icon: RotateCw },
+    { label: t("nav.cycles"), href: `/cycles?project=${activeProjectId ?? ""}`, icon: RotateCw },
     { label: t("common.settings"), href: "/settings", icon: Settings },
   ];
 

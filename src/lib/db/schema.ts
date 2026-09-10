@@ -16,18 +16,39 @@ CREATE TABLE IF NOT EXISTS labels (
 );
 
 CREATE TABLE IF NOT EXISTS projects (
-  id             TEXT PRIMARY KEY,
-  name           TEXT NOT NULL,
-  prefix         TEXT NOT NULL UNIQUE,
-  color          TEXT NOT NULL,
-  icon_mime_type TEXT,
-  icon_data      BLOB,
-  created_at     TEXT NOT NULL
+  id                  TEXT PRIMARY KEY,
+  name                TEXT NOT NULL,
+  prefix              TEXT NOT NULL UNIQUE,
+  color               TEXT NOT NULL,
+  icon_mime_type      TEXT,
+  icon_data           BLOB,
+  cycle_duration_days INTEGER NOT NULL DEFAULT 14,
+  created_at          TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS cycles (
+  id         TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  number     INTEGER NOT NULL,
+  name       TEXT,
+  starts_at  TEXT NOT NULL,
+  ends_at    TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS cycle_snapshots (
+  cycle_id  TEXT NOT NULL REFERENCES cycles(id) ON DELETE CASCADE,
+  date      TEXT NOT NULL,
+  scope     INTEGER NOT NULL,
+  started   INTEGER NOT NULL,
+  completed INTEGER NOT NULL,
+  PRIMARY KEY (cycle_id, date)
 );
 
 CREATE TABLE IF NOT EXISTS issues (
   id          TEXT PRIMARY KEY,
   project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  cycle_id    TEXT REFERENCES cycles(id),
   title       TEXT NOT NULL,
   description TEXT,
   status      TEXT NOT NULL CHECK (status IN ('backlog','todo','in-progress','done','canceled')),
@@ -77,6 +98,7 @@ CREATE TABLE IF NOT EXISTS views (
 
 CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status);
 CREATE INDEX IF NOT EXISTS idx_issue_notes_issue ON issue_notes(issue_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_cycles_project ON cycles(project_id, number);
 `;
 
 const LEGACY_CURRENT_USER_EMAIL = "turan.fatih@dgpaysit.com";
@@ -86,6 +108,7 @@ export function ensureSchema(db: DatabaseSync) {
   ensureTeamsRemoved(db);
   ensureProjectsAdded(db);
   ensureProjectIconColumns(db);
+  ensureCyclesColumns(db);
   ensureCurrentUserColumn(db);
   ensureAttachmentIssueIdColumn(db);
 }
@@ -156,6 +179,28 @@ function ensureProjectIconColumns(db: DatabaseSync) {
   }
   if (!columns.some((column) => column.name === "icon_data")) {
     db.exec("ALTER TABLE projects ADD COLUMN icon_data BLOB");
+  }
+}
+
+/**
+ * `projects.cycle_duration_days` ve `issues.cycle_id` bu sürümde eklendi
+ * (Linear tarzı otomatik tekrarlayan cycle desteği). `cycles` tablosunun
+ * kendisi hiç var olmadığı için DDL_SQL'deki `CREATE TABLE IF NOT EXISTS`
+ * yeterli — sadece var olan `projects`/`issues` tablolarına yeni kolon
+ * eklemek migration gerektiriyor. `cycle_id` nullable + DEFAULT'suz REFERENCES
+ * olduğu için (attachments.issue_id ile aynı kombinasyon) tek adımda ekleniyor;
+ * `cycle_duration_days` REFERENCES içermediği için NOT NULL+DEFAULT ile
+ * sorunsuz ekleniyor (bu kısıtlama sadece REFERENCES'lı kolonlar içindi).
+ */
+function ensureCyclesColumns(db: DatabaseSync) {
+  const projectColumns = db.prepare("PRAGMA table_info(projects)").all() as { name: string }[];
+  if (!projectColumns.some((column) => column.name === "cycle_duration_days")) {
+    db.exec("ALTER TABLE projects ADD COLUMN cycle_duration_days INTEGER NOT NULL DEFAULT 14");
+  }
+
+  const issueColumns = db.prepare("PRAGMA table_info(issues)").all() as { name: string }[];
+  if (!issueColumns.some((column) => column.name === "cycle_id")) {
+    db.exec("ALTER TABLE issues ADD COLUMN cycle_id TEXT REFERENCES cycles(id)");
   }
 }
 
