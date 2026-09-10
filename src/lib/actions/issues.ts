@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import type { DatabaseSync } from "node:sqlite";
 import type { PriorityLevel } from "@/components/ui/priority-icon";
 import type { StatusState } from "@/components/ui/status-icon";
-import { TEAMS } from "@/lib/app-shell-data";
 import { getDb } from "@/lib/db/client";
 import { linkAttachmentsToIssue } from "@/lib/db/attachment-links";
 
@@ -19,8 +18,8 @@ export interface IssueFormValues {
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
-function getNextIssueId(db: DatabaseSync, teamId: string, prefix: string): string {
-  const rows = db.prepare("SELECT id FROM issues WHERE team_id = ?").all(teamId) as {
+function getNextIssueId(db: DatabaseSync, projectId: string, prefix: string): string {
+  const rows = db.prepare("SELECT id FROM issues WHERE project_id = ?").all(projectId) as {
     id: string;
   }[];
   const maxNum = rows.reduce((max, row) => {
@@ -32,25 +31,27 @@ function getNextIssueId(db: DatabaseSync, teamId: string, prefix: string): strin
 }
 
 export async function createIssue(
-  teamId: string,
+  projectId: string,
   input: IssueFormValues,
 ): Promise<ActionResult<{ id: string }>> {
   const title = input.title.trim();
   if (!title) return { ok: false, error: "title-required" };
 
-  const team = TEAMS.find((t) => t.slug === teamId);
-  if (!team) return { ok: false, error: "team-not-found" };
-
   const db = getDb();
-  const id = getNextIssueId(db, teamId, team.prefix);
+  const project = db.prepare("SELECT prefix FROM projects WHERE id = ?").get(projectId) as
+    | { prefix: string }
+    | undefined;
+  if (!project) return { ok: false, error: "project-not-found" };
+
+  const id = getNextIssueId(db, projectId, project.prefix);
   const createdAt = new Date().toISOString();
 
   db.prepare(
-    `INSERT INTO issues (id, team_id, title, description, status, priority, assignee_id, created_at)
+    `INSERT INTO issues (id, project_id, title, description, status, priority, assignee_id, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
-    teamId,
+    projectId,
     title,
     input.description.trim() || null,
     input.status,
@@ -66,13 +67,12 @@ export async function createIssue(
 
   linkAttachmentsToIssue(db, id, [input.description]);
 
-  revalidatePath(`/team/${teamId}/issues`);
+  revalidatePath("/issues");
   return { ok: true, data: { id } };
 }
 
 export async function updateIssueStatus(
   issueId: string,
-  teamId: string,
   status: StatusState,
 ): Promise<ActionResult<{ id: string }>> {
   const db = getDb();
@@ -80,13 +80,12 @@ export async function updateIssueStatus(
 
   if (Number(result.changes) === 0) return { ok: false, error: "issue-not-found" };
 
-  revalidatePath(`/team/${teamId}/issues`);
+  revalidatePath("/issues");
   return { ok: true, data: { id: issueId } };
 }
 
 export async function updateIssue(
   issueId: string,
-  teamId: string,
   input: IssueFormValues,
 ): Promise<ActionResult<{ id: string }>> {
   const title = input.title.trim();
@@ -116,13 +115,12 @@ export async function updateIssue(
 
   linkAttachmentsToIssue(db, issueId, [input.description]);
 
-  revalidatePath(`/team/${teamId}/issues`);
+  revalidatePath("/issues");
   return { ok: true, data: { id: issueId } };
 }
 
 export async function deleteIssue(
   issueId: string,
-  teamId: string,
 ): Promise<ActionResult<{ id: string }>> {
   const db = getDb();
   db.exec("BEGIN");
@@ -139,6 +137,6 @@ export async function deleteIssue(
     throw error;
   }
 
-  revalidatePath(`/team/${teamId}/issues`);
+  revalidatePath("/issues");
   return { ok: true, data: { id: issueId } };
 }

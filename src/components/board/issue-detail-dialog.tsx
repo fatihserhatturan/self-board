@@ -63,7 +63,7 @@ export function IssueDetailDialog({
       return;
     }
     setSubmitting(true);
-    const result = await updateIssue(issue.id, issue.teamId, values);
+    const result = await updateIssue(issue.id, values);
     setSubmitting(false);
     if (!result.ok) {
       toast.error(t("toast.issue.updateError"));
@@ -91,7 +91,7 @@ export function IssueDetailDialog({
   async function handleDelete() {
     if (!issue) return;
     setSubmitting(true);
-    const result = await deleteIssue(issue.id, issue.teamId);
+    const result = await deleteIssue(issue.id);
     setSubmitting(false);
     setConfirmingDelete(false);
     if (!result.ok) {

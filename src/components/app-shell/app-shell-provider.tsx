@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useLocalStorageState } from "@/lib/use-local-storage-state";
 import type { BoardIssue } from "@/lib/data/issues";
+import type { Project } from "@/lib/data/projects";
 
 export interface AppShellContextValue {
   sidebarCollapsed: boolean;
@@ -12,6 +13,9 @@ export interface AppShellContextValue {
   createIssueOpen: boolean;
   setCreateIssueOpen: (open: boolean) => void;
   issues: BoardIssue[];
+  projects: Project[];
+  activeProjectId: string | null;
+  setActiveProjectId: (id: string) => void;
 }
 
 const AppShellContext = createContext<AppShellContextValue | null>(null);
@@ -27,9 +31,11 @@ export function useAppShell(): AppShellContextValue {
 export function AppShellProvider({
   children,
   issues,
+  projects,
 }: {
   children: ReactNode;
   issues: BoardIssue[];
+  projects: Project[];
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorageState(
     "self-board:sidebar-collapsed",
@@ -37,6 +43,19 @@ export function AppShellProvider({
   );
   const [commandOpen, setCommandOpen] = useState(false);
   const [createIssueOpen, setCreateIssueOpen] = useState(false);
+  const [storedProjectId, setStoredProjectId] = useLocalStorageState<string | null>(
+    "self-board:active-project-id",
+    null,
+    (value) => value ?? "",
+    (raw) => raw || null,
+  );
+  // localStorage'daki proje id'si silinmiş/geçersiz olabilir (başka bir
+  // sekmede silinmiş, eski bir tarayıcı state'i) — her zaman güncel `projects`
+  // listesine göre "iyileşen" bir değer türetiyoruz, ham storage değerini
+  // doğrudan güvenmiyoruz.
+  const activeProjectId = projects.some((project) => project.id === storedProjectId)
+    ? storedProjectId
+    : (projects[0]?.id ?? null);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -59,6 +78,9 @@ export function AppShellProvider({
         createIssueOpen,
         setCreateIssueOpen,
         issues,
+        projects,
+        activeProjectId,
+        setActiveProjectId: setStoredProjectId,
       }}
     >
       {children}

@@ -17,7 +17,7 @@ export interface IssueLabel {
 
 export interface BoardIssue {
   id: string;
-  teamId: string;
+  projectId: string;
   title: string;
   description?: string;
   status: StatusState;
@@ -29,7 +29,7 @@ export interface BoardIssue {
 
 interface IssueRow {
   id: string;
-  teamId: string;
+  projectId: string;
   title: string;
   description: string | null;
   status: StatusState;
@@ -58,7 +58,7 @@ function asNullableString(value: unknown): string | null {
 function toIssueRow(row: Record<string, unknown>): IssueRow {
   return {
     id: asString(row.id),
-    teamId: asString(row.team_id),
+    projectId: asString(row.project_id),
     title: asString(row.title),
     description: asNullableString(row.description),
     status: asString(row.status) as StatusState,
@@ -80,24 +80,26 @@ function toIssueLabelRow(row: Record<string, unknown>): IssueLabelRow {
 }
 
 /**
- * Takıma özel (hydrate edilmiş) issue'lar. `teamId` verilmezse tümü döner.
- * SQLite'a iki sorgu atıp label'ları JS'te Map ile manuel join ediyor.
- * `async` kalıyor (DatabaseSync sync olsa da) — arayüz stabil, ileride farklı
- * bir backend'e geçilirse çağıran taraflar etkilenmez.
+ * Hydrate edilmiş issue'lar. `projectId` verilmezse tümü (projeler-arası,
+ * ör. My Issues) döner. SQLite'a iki sorgu atıp label'ları JS'te Map ile
+ * manuel join ediyor. `async` kalıyor (DatabaseSync sync olsa da) — arayüz
+ * stabil, ileride farklı bir backend'e geçilirse çağıran taraflar etkilenmez.
  */
-export async function getIssues(teamId?: string): Promise<BoardIssue[]> {
+export async function getIssues(projectId?: string): Promise<BoardIssue[]> {
   const db = getDb();
 
   const issuesSql = `
-    SELECT i.id, i.team_id, i.title, i.description, i.status, i.priority,
+    SELECT i.id, i.project_id, i.title, i.description, i.status, i.priority,
            i.assignee_id, u.name AS assignee_name, u.email AS assignee_email,
            i.created_at
     FROM issues i
     LEFT JOIN users u ON u.id = i.assignee_id
-    ${teamId ? "WHERE i.team_id = ?" : ""}
+    ${projectId ? "WHERE i.project_id = ?" : ""}
     ORDER BY i.created_at ASC
   `;
-  const rawIssueRows = teamId ? db.prepare(issuesSql).all(teamId) : db.prepare(issuesSql).all();
+  const rawIssueRows = projectId
+    ? db.prepare(issuesSql).all(projectId)
+    : db.prepare(issuesSql).all();
   const issueRows = rawIssueRows.map(toIssueRow);
 
   const labelRows = db
@@ -118,7 +120,7 @@ export async function getIssues(teamId?: string): Promise<BoardIssue[]> {
 
   return issueRows.map((row) => ({
     id: row.id,
-    teamId: row.teamId,
+    projectId: row.projectId,
     title: row.title,
     description: row.description ?? undefined,
     status: row.status,

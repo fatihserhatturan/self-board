@@ -2,7 +2,6 @@
 
 import { CreateIssueDialog } from "@/components/board/create-issue-dialog";
 import { useAppShell } from "@/components/app-shell/app-shell-provider";
-import { DEFAULT_TEAM } from "@/lib/app-shell-data";
 import type { IssueLabel, Person } from "@/lib/data/issues";
 
 export interface GlobalCreateIssueDialogProps {
@@ -11,13 +10,13 @@ export interface GlobalCreateIssueDialogProps {
 }
 
 export function GlobalCreateIssueDialog({ users, labels }: GlobalCreateIssueDialogProps) {
-  const { createIssueOpen, setCreateIssueOpen } = useAppShell();
+  const { createIssueOpen, setCreateIssueOpen, activeProjectId } = useAppShell();
 
   return (
     <CreateIssueDialog
       open={createIssueOpen}
       onOpenChange={setCreateIssueOpen}
-      teamId={DEFAULT_TEAM.slug}
+      projectId={activeProjectId ?? ""}
       users={users}
       labels={labels}
     />

@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useAppShell } from "@/components/app-shell/app-shell-provider";
 import { useLocale } from "@/components/locale-provider";
 import type { TranslationKey } from "@/lib/i18n/types";
 import type { BoardIssue, IssueLabel, Person } from "@/lib/data/issues";
@@ -42,7 +43,7 @@ const PRIORITY_RANK: Record<PriorityLevel, number> = {
 export interface IssueWorkspaceProps {
   titleKey: TranslationKey;
   breadcrumb?: string;
-  teamId: string;
+  projectId?: string;
   issues: BoardIssue[];
   users: Person[];
   labels: IssueLabel[];
@@ -53,7 +54,7 @@ export interface IssueWorkspaceProps {
 export function IssueWorkspace({
   titleKey,
   breadcrumb,
-  teamId,
+  projectId,
   issues,
   users,
   labels,
@@ -61,6 +62,8 @@ export function IssueWorkspace({
   initialView,
 }: IssueWorkspaceProps) {
   const { t } = useLocale();
+  const { activeProjectId } = useAppShell();
+  const resolvedProjectId = projectId ?? activeProjectId ?? "";
   const [loadedView] = useState<SavedView | null>(initialView ?? null);
   const [view, setView] = useState<TopBarView>(initialView?.layout ?? "list");
 
@@ -195,7 +198,12 @@ export function IssueWorkspace({
         }
         saveViewTrigger={
           <SaveViewPopover
-            input={{ teamId, layout: view, filters: filterCriteria, options: viewOptions }}
+            input={{
+              projectId: resolvedProjectId,
+              layout: view,
+              filters: filterCriteria,
+              options: viewOptions,
+            }}
             loadedView={loadedView}
           />
         }
@@ -216,7 +224,7 @@ export function IssueWorkspace({
       <CreateIssueDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        teamId={teamId}
+        projectId={resolvedProjectId}
         users={users}
         labels={labels}
         defaultAssigneeId={defaultAssigneeId}

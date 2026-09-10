@@ -60,7 +60,7 @@ export function Board({ issues, onOpenIssue, viewOptions }: BoardProps) {
       prev.map((i) => (i.id === active.id ? { ...i, status: newStatus } : i)),
     );
 
-    const result = await updateIssueStatus(issue.id, issue.teamId, newStatus);
+    const result = await updateIssueStatus(issue.id, newStatus);
     if (!result.ok) {
       setBoardIssues((prev) =>
         prev.map((i) => (i.id === active.id ? { ...i, status: previousStatus } : i)),

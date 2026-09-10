@@ -9,7 +9,7 @@ import type { IssueViewOptions } from "@/components/board/issue-view-options-pan
 import type { TopBarView } from "@/components/app-shell/top-bar";
 
 export interface CreateViewInput {
-  teamId: string;
+  projectId: string;
   name: string;
   layout: TopBarView;
   filters: IssueFilterCriteria;
@@ -24,11 +24,11 @@ export async function createView(input: CreateViewInput): Promise<ActionResult<S
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
   db.prepare(
-    `INSERT INTO views (id, team_id, name, layout, filters_json, options_json, created_at)
+    `INSERT INTO views (id, project_id, name, layout, filters_json, options_json, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
-    input.teamId,
+    input.projectId,
     trimmed,
     input.layout,
     JSON.stringify(input.filters),
@@ -36,12 +36,12 @@ export async function createView(input: CreateViewInput): Promise<ActionResult<S
     createdAt,
   );
 
-  revalidatePath(`/team/${input.teamId}/views`);
+  revalidatePath("/views");
   return {
     ok: true,
     data: {
       id,
-      teamId: input.teamId,
+      projectId: input.projectId,
       name: trimmed,
       layout: input.layout,
       filters: input.filters,
@@ -53,8 +53,7 @@ export async function createView(input: CreateViewInput): Promise<ActionResult<S
 
 export async function updateView(
   id: string,
-  teamId: string,
-  input: Omit<CreateViewInput, "teamId">,
+  input: CreateViewInput,
 ): Promise<ActionResult<{ id: string }>> {
   const trimmed = input.name.trim();
   if (!trimmed) return { ok: false, error: "name-required" };
@@ -67,13 +66,12 @@ export async function updateView(
     .run(trimmed, input.layout, JSON.stringify(input.filters), JSON.stringify(input.options), id);
   if (Number(result.changes) === 0) return { ok: false, error: "view-not-found" };
 
-  revalidatePath(`/team/${teamId}/views`);
+  revalidatePath("/views");
   return { ok: true, data: { id } };
 }
 
 export async function renameView(
   id: string,
-  teamId: string,
   name: string,
 ): Promise<ActionResult<{ id: string }>> {
   const trimmed = name.trim();
@@ -83,18 +81,15 @@ export async function renameView(
   const result = db.prepare("UPDATE views SET name = ? WHERE id = ?").run(trimmed, id);
   if (Number(result.changes) === 0) return { ok: false, error: "view-not-found" };
 
-  revalidatePath(`/team/${teamId}/views`);
+  revalidatePath("/views");
   return { ok: true, data: { id } };
 }
 
-export async function deleteView(
-  id: string,
-  teamId: string,
-): Promise<ActionResult<{ id: string }>> {
+export async function deleteView(id: string): Promise<ActionResult<{ id: string }>> {
   const db = getDb();
   const result = db.prepare("DELETE FROM views WHERE id = ?").run(id);
   if (Number(result.changes) === 0) return { ok: false, error: "view-not-found" };
 
-  revalidatePath(`/team/${teamId}/views`);
+  revalidatePath("/views");
   return { ok: true, data: { id } };
 }

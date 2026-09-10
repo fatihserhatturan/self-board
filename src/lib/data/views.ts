@@ -9,7 +9,7 @@ import type { TopBarView } from "@/components/app-shell/top-bar";
 
 export interface SavedView {
   id: string;
-  teamId: string;
+  projectId: string;
   name: string;
   layout: TopBarView;
   filters: IssueFilterCriteria;
@@ -19,7 +19,7 @@ export interface SavedView {
 
 interface ViewRow {
   id: string;
-  teamId: string;
+  projectId: string;
   name: string;
   layout: TopBarView;
   filtersJson: string;
@@ -34,7 +34,7 @@ function asString(value: unknown): string {
 function toViewRow(row: Record<string, unknown>): ViewRow {
   return {
     id: asString(row.id),
-    teamId: asString(row.team_id),
+    projectId: asString(row.project_id),
     name: asString(row.name),
     layout: asString(row.layout) as TopBarView,
     filtersJson: asString(row.filters_json),
@@ -63,7 +63,7 @@ function parseOptions(raw: string): IssueViewOptions {
 function toSavedView(row: ViewRow): SavedView {
   return {
     id: row.id,
-    teamId: row.teamId,
+    projectId: row.projectId,
     name: row.name,
     layout: row.layout,
     filters: parseFilters(row.filtersJson),
@@ -72,14 +72,14 @@ function toSavedView(row: ViewRow): SavedView {
   };
 }
 
-export async function getViews(teamId: string): Promise<SavedView[]> {
+export async function getViews(projectId: string): Promise<SavedView[]> {
   const db = getDb();
   const rows = db
     .prepare(
-      `SELECT id, team_id, name, layout, filters_json, options_json, created_at
-       FROM views WHERE team_id = ? ORDER BY created_at ASC`,
+      `SELECT id, project_id, name, layout, filters_json, options_json, created_at
+       FROM views WHERE project_id = ? ORDER BY created_at ASC`,
     )
-    .all(teamId);
+    .all(projectId);
   return rows.map((row) => toSavedView(toViewRow(row as Record<string, unknown>)));
 }
 
@@ -87,7 +87,7 @@ export async function getView(id: string): Promise<SavedView | null> {
   const db = getDb();
   const row = db
     .prepare(
-      `SELECT id, team_id, name, layout, filters_json, options_json, created_at
+      `SELECT id, project_id, name, layout, filters_json, options_json, created_at
        FROM views WHERE id = ?`,
     )
     .get(id);

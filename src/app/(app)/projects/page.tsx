@@ -1,24 +1,11 @@
-"use client";
+import { getProjects } from "@/lib/data/projects";
+import { ProjectsContent } from "@/app/(app)/projects/projects-content";
 
-import { useState } from "react";
-import { FolderKanban } from "lucide-react";
-import { TopBar, type TopBarView } from "@/components/app-shell/top-bar";
-import { EmptyState } from "@/components/ui/empty-state";
-import { useLocale } from "@/components/locale-provider";
+// Bu route artık her istekte canlı SQLite state'i okuyor — build-time statik
+// üretim denemesine mahal vermemek için açıkça dinamik olarak işaretleniyor.
+export const dynamic = "force-dynamic";
 
-export default function ProjectsPage() {
-  const { t } = useLocale();
-  const [view, setView] = useState<TopBarView>("list");
-  return (
-    <>
-      <TopBar
-        title={t("nav.projects")}
-        view={view}
-        onViewChange={setView}
-        primaryActionLabel={t("page.projects.newAction")}
-        primaryActionDisabled
-      />
-      <EmptyState icon={FolderKanban} title={t("emptyState.projects.title")} />
-    </>
-  );
+export default async function ProjectsPage() {
+  const projects = await getProjects();
+  return <ProjectsContent projects={projects} />;
 }

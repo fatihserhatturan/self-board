@@ -17,7 +17,6 @@ export interface SeedLabel {
 
 export interface SeedIssue {
   id: string;
-  teamId: string;
   title: string;
   description?: string;
   status: StatusState;
@@ -49,7 +48,6 @@ export const seedLabels: SeedLabel[] = [
 export const seedIssues: SeedIssue[] = [
   {
     id: "COR-101",
-    teamId: "core",
     title: "Sidebar collapse state flickers on first paint",
     description:
       "sidebarCollapsed localStorage'dan okunurken bir kare boyunca yanlış durum görünüyor.",
@@ -61,7 +59,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-102",
-    teamId: "core",
     title: "Add keyboard shortcut cheatsheet to command palette",
     status: "backlog",
     priority: "low",
@@ -71,7 +68,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-103",
-    teamId: "core",
     title: "Board column header count badge miscounts when filtered",
     status: "todo",
     priority: "medium",
@@ -80,7 +76,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-104",
-    teamId: "core",
     title: "Implement dark/light theme toggle",
     status: "done",
     priority: "medium",
@@ -90,7 +85,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-105",
-    teamId: "core",
     title: "Write onboarding guide for new teammates",
     status: "backlog",
     priority: "no-priority",
@@ -100,7 +94,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-106",
-    teamId: "core",
     title: "Fix XSS vulnerability in issue description renderer",
     description:
       "Zengin metin alani sanitize edilmeden render ediliyor, script injection riski var.",
@@ -112,7 +105,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-107",
-    teamId: "core",
     title: "Redesign empty state illustrations",
     status: "canceled",
     priority: "low",
@@ -122,7 +114,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-108",
-    teamId: "core",
     title: "Optimize board re-render on drag",
     status: "todo",
     priority: "high",
@@ -132,7 +123,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-109",
-    teamId: "core",
     title: "Add tooltip delay configuration",
     status: "done",
     priority: "low",
@@ -142,7 +132,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-110",
-    teamId: "core",
     title: "Support multi-select bulk status update",
     status: "backlog",
     priority: "medium",
@@ -151,7 +140,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-111",
-    teamId: "core",
     title: "Migrate useLocalStorageState to a generic hook",
     status: "in-progress",
     priority: "medium",
@@ -161,7 +149,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-112",
-    teamId: "core",
     title: "Fix hydration mismatch on locale switch",
     status: "done",
     priority: "high",
@@ -171,7 +158,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-113",
-    teamId: "core",
     title: "Document component API conventions",
     status: "todo",
     priority: "low",
@@ -181,7 +167,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-114",
-    teamId: "core",
     title: "Add cycles view calendar",
     status: "backlog",
     priority: "no-priority",
@@ -191,7 +176,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-115",
-    teamId: "core",
     title: "Reduce bundle size of command palette",
     status: "done",
     priority: "medium",
@@ -201,7 +185,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-116",
-    teamId: "core",
     title: "Explore alternative sidebar icon set",
     status: "canceled",
     priority: "no-priority",
@@ -211,7 +194,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-117",
-    teamId: "core",
     title: "Polish focus ring contrast in light theme",
     status: "in-progress",
     priority: "low",
@@ -221,7 +203,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-118",
-    teamId: "core",
     title: "Avatar fallback color collides with destructive badge red",
     status: "todo",
     priority: "medium",
@@ -231,7 +212,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-119",
-    teamId: "core",
     title: "Audit SQLite file permissions",
     description: "data/self-board.db dosyasinin erisim izinleri gozden gecirilmeli.",
     status: "backlog",
@@ -242,7 +222,6 @@ export const seedIssues: SeedIssue[] = [
   },
   {
     id: "COR-120",
-    teamId: "core",
     title: 'Add "Yeni Proje" empty state call-to-action polish',
     status: "done",
     priority: "low",

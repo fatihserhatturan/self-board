@@ -17,7 +17,8 @@ export interface SidebarNavItemProps {
 
 export function SidebarNavItem({ href, icon: Icon, label, badge, indent }: SidebarNavItemProps) {
   const pathname = usePathname();
-  const isActive = pathname === href || pathname.startsWith(`${href}/`);
+  const hrefPathname = href.split("?")[0];
+  const isActive = pathname === hrefPathname || pathname.startsWith(`${hrefPathname}/`);
 
   return (
     <Link

@@ -1,5 +1,4 @@
 import { getCurrentUser, getIssues, getLabels, getUsers } from "@/lib/data/issues";
-import { DEFAULT_TEAM } from "@/lib/app-shell-data";
 import { IssueWorkspace } from "@/components/board/issue-workspace";
 
 // Bu route artık her istekte canlı SQLite state'i okuyor — build-time statik
@@ -20,7 +19,6 @@ export default async function MyIssuesPage() {
   return (
     <IssueWorkspace
       titleKey="nav.myIssues"
-      teamId={DEFAULT_TEAM.slug}
       issues={myIssues}
       users={users}
       labels={labels}

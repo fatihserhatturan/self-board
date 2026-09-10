@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import {
-  FolderKanban,
   Layers,
   ListTodo,
   PanelLeftClose,
   Plus,
+  RotateCw,
   Search,
   Settings,
 } from "lucide-react";
@@ -16,12 +16,12 @@ import { Divider } from "@/components/ui/divider";
 import { Kbd } from "@/components/ui/kbd";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip } from "@/components/ui/tooltip";
+import { ProjectSwitcher } from "@/components/app-shell/project-switcher";
 import { SidebarNavItem } from "@/components/app-shell/sidebar-nav-item";
-import { TeamNavGroup } from "@/components/app-shell/team-nav-group";
 import { WorkspaceSwitcher } from "@/components/app-shell/workspace-switcher";
 import { useAppShell } from "@/components/app-shell/app-shell-provider";
 import { useLocale } from "@/components/locale-provider";
-import { TEAMS, WORKSPACE } from "@/lib/app-shell-data";
+import { WORKSPACE } from "@/lib/app-shell-data";
 import type { Person } from "@/lib/data/issues";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +30,8 @@ export interface SidebarProps {
 }
 
 export function Sidebar({ currentUser }: SidebarProps) {
-  const { sidebarCollapsed, toggleSidebar, setCommandOpen, setCreateIssueOpen } = useAppShell();
+  const { sidebarCollapsed, toggleSidebar, setCommandOpen, setCreateIssueOpen, activeProjectId } =
+    useAppShell();
   const { t } = useLocale();
 
   return (
@@ -43,6 +44,7 @@ export function Sidebar({ currentUser }: SidebarProps) {
       <div className={cn("flex h-full w-64 flex-col", sidebarCollapsed && "opacity-0")}>
         <div className="flex flex-col gap-1 p-2">
           <WorkspaceSwitcher workspaceName={WORKSPACE.name} />
+          <ProjectSwitcher />
 
           <Button
             variant="secondary"
@@ -77,17 +79,17 @@ export function Sidebar({ currentUser }: SidebarProps) {
               <p className="px-2 pb-1 text-micro font-medium uppercase tracking-wide text-text-tertiary">
                 {t("nav.section.workspace")}
               </p>
-              <SidebarNavItem href="/projects" icon={FolderKanban} label={t("nav.projects")} />
-              <SidebarNavItem href="/views" icon={Layers} label={t("nav.views")} />
-            </div>
-
-            <div className="flex flex-col gap-0.5">
-              <p className="px-2 pb-1 text-micro font-medium uppercase tracking-wide text-text-tertiary">
-                {t("sidebar.section.yourTeams")}
-              </p>
-              {TEAMS.map((team) => (
-                <TeamNavGroup key={team.slug} team={team} />
-              ))}
+              <SidebarNavItem
+                href={`/issues?project=${activeProjectId ?? ""}`}
+                icon={ListTodo}
+                label={t("nav.issues")}
+              />
+              <SidebarNavItem
+                href={`/views?project=${activeProjectId ?? ""}`}
+                icon={Layers}
+                label={t("nav.views")}
+              />
+              <SidebarNavItem href="/cycles" icon={RotateCw} label={t("nav.cycles")} />
             </div>
           </div>
         </ScrollArea>

@@ -59,7 +59,7 @@ export function SaveViewPopover({ input, loadedView, onSaved }: SaveViewPopoverP
   async function handleUpdate() {
     if (!loadedView) return;
     setUpdating(true);
-    const result = await updateView(loadedView.id, input.teamId, { ...input, name: loadedView.name });
+    const result = await updateView(loadedView.id, { ...input, name: loadedView.name });
     setUpdating(false);
     if (!result.ok) {
       toast.error(t("views.saveDialog.updateError"));

@@ -1,15 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
-import { DEFAULT_TEAM } from "@/lib/app-shell-data";
 import { seedIssues, seedLabels, seedPeople } from "@/lib/db/seed-data";
 
 const DDL_SQL = `
-CREATE TABLE IF NOT EXISTS teams (
-  id      TEXT PRIMARY KEY,
-  name    TEXT NOT NULL,
-  color   TEXT NOT NULL,
-  initial TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS users (
   id         TEXT PRIMARY KEY,
   name       TEXT NOT NULL,
@@ -23,9 +15,19 @@ CREATE TABLE IF NOT EXISTS labels (
   color TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS projects (
+  id             TEXT PRIMARY KEY,
+  name           TEXT NOT NULL,
+  prefix         TEXT NOT NULL UNIQUE,
+  color          TEXT NOT NULL,
+  icon_mime_type TEXT,
+  icon_data      BLOB,
+  created_at     TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS issues (
   id          TEXT PRIMARY KEY,
-  team_id     TEXT NOT NULL REFERENCES teams(id),
+  project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   title       TEXT NOT NULL,
   description TEXT,
   status      TEXT NOT NULL CHECK (status IN ('backlog','todo','in-progress','done','canceled')),
@@ -65,7 +67,7 @@ CREATE TABLE IF NOT EXISTS link_previews (
 
 CREATE TABLE IF NOT EXISTS views (
   id           TEXT PRIMARY KEY,
-  team_id      TEXT NOT NULL REFERENCES teams(id),
+  project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   name         TEXT NOT NULL,
   layout       TEXT NOT NULL CHECK (layout IN ('list','board')),
   filters_json TEXT NOT NULL,
@@ -73,17 +75,112 @@ CREATE TABLE IF NOT EXISTS views (
   created_at   TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_issues_team_status ON issues(team_id, status);
+CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status);
 CREATE INDEX IF NOT EXISTS idx_issue_notes_issue ON issue_notes(issue_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_views_team ON views(team_id);
 `;
 
 const LEGACY_CURRENT_USER_EMAIL = "turan.fatih@dgpaysit.com";
 
 export function ensureSchema(db: DatabaseSync) {
   db.exec(DDL_SQL);
+  ensureTeamsRemoved(db);
+  ensureProjectsAdded(db);
+  ensureProjectIconColumns(db);
   ensureCurrentUserColumn(db);
   ensureAttachmentIssueIdColumn(db);
+}
+
+const DEFAULT_PROJECT = {
+  id: "core",
+  name: "Core",
+  prefix: "COR",
+  color: "blue",
+} as const;
+
+/**
+ * `projects` tablosu ve issues/views üzerindeki `project_id` kolonu bu sürümde
+ * eklendi (tek proje varsayımından gerçek çoklu-proje desteğine geçiş). Var
+ * olan DB'lerde (COR-* id'li issue/view'lar) veri kaybı olmaması için: (1)
+ * `projects` tablosu boşsa geçmişteki COR-* id'lerle birebir uyumlu bir
+ * varsayılan proje ekleniyor, (2) issues/views'de `project_id` kolonu eksikse
+ * ekleniyor. SQLite `ALTER TABLE ADD COLUMN` ile aynı anda hem NOT NULL +
+ * sabit bir DEFAULT hem de REFERENCES tanımlanmasına izin vermiyor ("Cannot
+ * add a REFERENCES column with non-NULL default value") — bu yüzden migrate
+ * edilen DB'lerde project_id, REFERENCES olmadan sade `TEXT NOT NULL DEFAULT
+ * 'core'` olarak ekleniyor. Referential integrity zaten `PRAGMA foreign_keys`
+ * hiç açılmadığı için hiçbir yerde runtime'da uygulanmıyor; deleteProject()
+ * cascade'i elle yapıyor, tıpkı deleteIssue/deleteLabel gibi.
+ */
+function ensureProjectsAdded(db: DatabaseSync) {
+  const { count } = db.prepare("SELECT COUNT(*) AS count FROM projects").get() as {
+    count: number;
+  };
+  if (count === 0) {
+    db.prepare(
+      `INSERT INTO projects (id, name, prefix, color, created_at) VALUES (?, ?, ?, ?, ?)`,
+    ).run(
+      DEFAULT_PROJECT.id,
+      DEFAULT_PROJECT.name,
+      DEFAULT_PROJECT.prefix,
+      DEFAULT_PROJECT.color,
+      new Date().toISOString(),
+    );
+  }
+
+  const issueColumns = db.prepare("PRAGMA table_info(issues)").all() as { name: string }[];
+  if (!issueColumns.some((column) => column.name === "project_id")) {
+    db.exec(
+      `ALTER TABLE issues ADD COLUMN project_id TEXT NOT NULL DEFAULT '${DEFAULT_PROJECT.id}'`,
+    );
+  }
+  db.exec("CREATE INDEX IF NOT EXISTS idx_issues_project_status ON issues(project_id, status)");
+
+  const viewColumns = db.prepare("PRAGMA table_info(views)").all() as { name: string }[];
+  if (!viewColumns.some((column) => column.name === "project_id")) {
+    db.exec(
+      `ALTER TABLE views ADD COLUMN project_id TEXT NOT NULL DEFAULT '${DEFAULT_PROJECT.id}'`,
+    );
+  }
+  db.exec("CREATE INDEX IF NOT EXISTS idx_views_project ON views(project_id)");
+}
+
+/**
+ * `icon_mime_type`/`icon_data` kolonları `projects` tablosuna sonradan
+ * eklendi (renk+baş harf yerine/yanında bir resim ikonu yükleyebilmek için).
+ * Var olan DB'lerde bu kolonlar eksik olacağı için ekleniyor.
+ */
+function ensureProjectIconColumns(db: DatabaseSync) {
+  const columns = db.prepare("PRAGMA table_info(projects)").all() as { name: string }[];
+  if (!columns.some((column) => column.name === "icon_mime_type")) {
+    db.exec("ALTER TABLE projects ADD COLUMN icon_mime_type TEXT");
+  }
+  if (!columns.some((column) => column.name === "icon_data")) {
+    db.exec("ALTER TABLE projects ADD COLUMN icon_data BLOB");
+  }
+}
+
+/**
+ * team_id kolonları issues/views tablolarından ve teams tablosunun tamamı
+ * kaldırıldı (uygulama artık tek kullanıcı, tek "takım" varsayımıyla çalışıyor).
+ * Eski DB dosyalarında bu kolonlar/tablo hâlâ var olabilir; PRAGMA table_info
+ * ile kontrol edip varsa temizliyoruz. İlişkili index önce kaldırılmalı —
+ * SQLite, bir index tarafından referans edilen kolonu DROP COLUMN ile
+ * kaldırmaya izin vermiyor.
+ */
+function ensureTeamsRemoved(db: DatabaseSync) {
+  const issueColumns = db.prepare("PRAGMA table_info(issues)").all() as { name: string }[];
+  const viewColumns = db.prepare("PRAGMA table_info(views)").all() as { name: string }[];
+
+  if (issueColumns.some((column) => column.name === "team_id")) {
+    db.exec("DROP INDEX IF EXISTS idx_issues_team_status");
+    db.exec("ALTER TABLE issues DROP COLUMN team_id");
+  }
+  if (viewColumns.some((column) => column.name === "team_id")) {
+    db.exec("DROP INDEX IF EXISTS idx_views_team");
+    db.exec("ALTER TABLE views DROP COLUMN team_id");
+  }
+  db.exec("DROP TABLE IF EXISTS teams");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status)");
 }
 
 /**
@@ -120,20 +217,13 @@ function ensureAttachmentIssueIdColumn(db: DatabaseSync) {
 
 /** Tablolar boşsa (ör. ilk çalıştırma) örnek veriyi tek transaction içinde ekler. */
 export function seedIfEmpty(db: DatabaseSync) {
-  const { count } = db.prepare("SELECT COUNT(*) AS count FROM teams").get() as {
+  const { count } = db.prepare("SELECT COUNT(*) AS count FROM users").get() as {
     count: number;
   };
   if (count > 0) return;
 
   db.exec("BEGIN");
   try {
-    db.prepare("INSERT INTO teams (id, name, color, initial) VALUES (?, ?, ?, ?)").run(
-      DEFAULT_TEAM.slug,
-      DEFAULT_TEAM.name,
-      DEFAULT_TEAM.color,
-      DEFAULT_TEAM.initial,
-    );
-
     const insertUser = db.prepare(
       "INSERT INTO users (id, name, email, is_current) VALUES (?, ?, ?, ?)",
     );
@@ -145,7 +235,7 @@ export function seedIfEmpty(db: DatabaseSync) {
     for (const label of seedLabels) insertLabel.run(label.id, label.name, label.color);
 
     const insertIssue = db.prepare(
-      `INSERT INTO issues (id, team_id, title, description, status, priority, assignee_id, created_at)
+      `INSERT INTO issues (id, project_id, title, description, status, priority, assignee_id, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const insertIssueLabel = db.prepare(
@@ -154,7 +244,7 @@ export function seedIfEmpty(db: DatabaseSync) {
     for (const issue of seedIssues) {
       insertIssue.run(
         issue.id,
-        issue.teamId,
+        DEFAULT_PROJECT.id,
         issue.title,
         issue.description ?? null,
         issue.status,

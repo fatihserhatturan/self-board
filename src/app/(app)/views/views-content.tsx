@@ -11,17 +11,17 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
-import { DEFAULT_TEAM } from "@/lib/app-shell-data";
 import { deleteView, renameView } from "@/lib/actions/views";
 import type { SavedView } from "@/lib/data/views";
 import { countActiveFilters } from "@/lib/board/filter-summary";
 
-export interface TeamViewsContentProps {
-  teamId: string;
+export interface ViewsContentProps {
+  projectId: string;
+  projectName: string;
   views: SavedView[];
 }
 
-export function TeamViewsContent({ teamId, views: initialViews }: TeamViewsContentProps) {
+export function ViewsContent({ projectId, projectName, views: initialViews }: ViewsContentProps) {
   const { t } = useLocale();
   const router = useRouter();
   const [views, setViews] = useState(initialViews);
@@ -29,7 +29,7 @@ export function TeamViewsContent({ teamId, views: initialViews }: TeamViewsConte
   async function handleRename(view: SavedView, name: string) {
     if (!name.trim() || name === view.name) return;
     setViews((prev) => prev.map((v) => (v.id === view.id ? { ...v, name } : v)));
-    const result = await renameView(view.id, teamId, name);
+    const result = await renameView(view.id, name);
     if (!result.ok) {
       setViews((prev) => prev.map((v) => (v.id === view.id ? view : v)));
       toast.error(t("views.renameError"));
@@ -39,7 +39,7 @@ export function TeamViewsContent({ teamId, views: initialViews }: TeamViewsConte
   async function handleDelete(view: SavedView) {
     const previous = views;
     setViews((prev) => prev.filter((v) => v.id !== view.id));
-    const result = await deleteView(view.id, teamId);
+    const result = await deleteView(view.id);
     if (!result.ok) {
       setViews(previous);
       toast.error(t("views.deleteError"));
@@ -50,9 +50,9 @@ export function TeamViewsContent({ teamId, views: initialViews }: TeamViewsConte
     <>
       <TopBar
         title={t("nav.views")}
-        breadcrumb={DEFAULT_TEAM.name}
+        breadcrumb={projectName}
         primaryActionLabel={t("page.views.newAction")}
-        onPrimaryAction={() => router.push(`/team/${teamId}/issues`)}
+        onPrimaryAction={() => router.push(`/issues?project=${projectId}`)}
       />
 
       {views.length === 0 ? (
@@ -61,7 +61,7 @@ export function TeamViewsContent({ teamId, views: initialViews }: TeamViewsConte
           title={t("emptyState.views.title")}
           action={{
             label: t("page.views.newAction"),
-            onClick: () => router.push(`/team/${teamId}/issues`),
+            onClick: () => router.push(`/issues?project=${projectId}`),
           }}
         />
       ) : (
@@ -89,7 +89,7 @@ export function TeamViewsContent({ teamId, views: initialViews }: TeamViewsConte
                   {filterCount} {t("views.card.filterCount")}
                 </span>
                 <Button variant="secondary" size="sm" asChild>
-                  <Link href={`/team/${teamId}/issues?view=${view.id}`}>
+                  <Link href={`/issues?project=${projectId}&view=${view.id}`}>
                     {t("views.card.openAction")}
                   </Link>
                 </Button>

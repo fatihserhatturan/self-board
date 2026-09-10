@@ -25,7 +25,7 @@ function buildDefaultValues(defaultAssigneeId?: string | null): IssueFormValues 
 export interface CreateIssueDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  teamId: string;
+  projectId: string;
   users: Person[];
   labels: IssueLabel[];
   defaultAssigneeId?: string | null;
@@ -34,7 +34,7 @@ export interface CreateIssueDialogProps {
 export function CreateIssueDialog({
   open,
   onOpenChange,
-  teamId,
+  projectId,
   users,
   labels,
   defaultAssigneeId,
@@ -60,7 +60,7 @@ export function CreateIssueDialog({
       return;
     }
     setSubmitting(true);
-    const result = await createIssue(teamId, values);
+    const result = await createIssue(projectId, values);
     setSubmitting(false);
     if (!result.ok) {
       toast.error(t("toast.issue.createError"));

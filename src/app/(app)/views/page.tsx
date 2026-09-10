@@ -1,9 +1,25 @@
 import { redirect } from "next/navigation";
-import { DEFAULT_TEAM } from "@/lib/app-shell-data";
+import { getViews } from "@/lib/data/views";
+import { getProjects, resolveActiveProject } from "@/lib/data/projects";
+import { ViewsContent } from "@/app/(app)/views/views-content";
 
-// Tek takım (`DEFAULT_TEAM`) olduğu için workspace-seviyesi Views sayfası,
-// takım-seviyesindeki gerçek uygulamaya yönlendiriyor — iki ayrı boş sayfa
-// mantığı tekrarlamak yerine.
-export default function ViewsPage() {
-  redirect(`/team/${DEFAULT_TEAM.slug}/views`);
+// Bu route artık her istekte canlı SQLite state'i okuyor — build-time statik
+// üretim denemesine mahal vermemek için açıkça dinamik olarak işaretleniyor.
+export const dynamic = "force-dynamic";
+
+export default async function ViewsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ project?: string }>;
+}) {
+  const { project: projectParam } = await searchParams;
+
+  const projects = await getProjects();
+  const project = resolveActiveProject(projects, projectParam);
+  if (project.id !== projectParam) {
+    redirect(`/views?project=${project.id}`);
+  }
+
+  const views = await getViews(project.id);
+  return <ViewsContent key={project.id} projectId={project.id} projectName={project.name} views={views} />;
 }
