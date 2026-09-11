@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <TooltipProvider delayDuration={200}>
-      <AppShellProvider issues={issues} projects={projects}>
+      <AppShellProvider issues={issues} projects={projects} currentUserId={currentUser?.id ?? null}>
         <div className="flex h-full min-h-0">
           <Sidebar currentUser={currentUser} />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>

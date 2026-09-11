@@ -19,7 +19,7 @@ export async function createLabel(
   const id = crypto.randomUUID();
   db.prepare("INSERT INTO labels (id, name, color) VALUES (?, ?, ?)").run(id, trimmed, color);
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { ok: true, data: { id, name: trimmed, color } };
 }
 
@@ -37,7 +37,7 @@ export async function updateLabel(
 
   if (Number(result.changes) === 0) return { ok: false, error: "label-not-found" };
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { ok: true, data: { id } };
 }
 
@@ -50,6 +50,6 @@ export async function deleteLabel(id: string): Promise<ActionResult<{ id: string
 
   if (Number(result.changes) === 0) return { ok: false, error: "label-not-found" };
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { ok: true, data: { id } };
 }

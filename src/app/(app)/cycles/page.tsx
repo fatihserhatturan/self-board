@@ -30,7 +30,6 @@ export default async function CyclesPage({
       key={project.id}
       projectId={project.id}
       projectName={project.name}
-      cycleDurationDays={project.cycleDurationDays}
       cycles={cycles}
       snapshots={snapshots}
     />

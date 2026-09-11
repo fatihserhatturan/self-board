@@ -18,11 +18,11 @@ const SEGMENTS: {
   color: string;
   hatched?: boolean;
 }[] = [
-  { key: "done", labelKey: "board.status.done", color: CHART_COLORS.completed },
-  { key: "inProgress", labelKey: "board.status.in-progress", color: CHART_COLORS.started },
-  { key: "todo", labelKey: "board.status.todo", color: CHART_COLORS.todo },
-  { key: "backlog", labelKey: "board.status.backlog", color: "var(--color-text-tertiary)" },
-  { key: "canceled", labelKey: "board.status.canceled", color: "var(--color-text-tertiary)", hatched: true },
+  { key: "completed", labelKey: "status.type.completed", color: CHART_COLORS.completed },
+  { key: "started", labelKey: "status.type.started", color: CHART_COLORS.started },
+  { key: "unstarted", labelKey: "status.type.unstarted", color: CHART_COLORS.todo },
+  { key: "backlog", labelKey: "status.type.backlog", color: "var(--color-text-tertiary)" },
+  { key: "canceled", labelKey: "status.type.canceled", color: "var(--color-text-tertiary)", hatched: true },
 ];
 
 const HATCH_BACKGROUND =

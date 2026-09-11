@@ -8,17 +8,22 @@ import { ColorSelect } from "@/components/ui/color-select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { InlineRenameInput } from "@/components/ui/inline-rename-input";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
+import {
+  SettingsPage,
+  SettingsSection,
+} from "@/components/settings/settings-primitives";
 import { createLabel, deleteLabel, updateLabel, type LabelColor } from "@/lib/actions/labels";
 import type { IssueLabel } from "@/lib/data/issues";
 
 export interface LabelSettingsProps {
   labels: IssueLabel[];
+  /** Etiket id'si -> kaç issue'da kullanıldığı. */
+  usage: Record<string, number>;
 }
 
-export function LabelSettings({ labels: initialLabels }: LabelSettingsProps) {
+export function LabelSettings({ labels: initialLabels, usage }: LabelSettingsProps) {
   const { t } = useLocale();
   const [labels, setLabels] = useState(initialLabels);
   const [pendingDelete, setPendingDelete] = useState<IssueLabel | null>(null);
@@ -70,18 +75,21 @@ export function LabelSettings({ labels: initialLabels }: LabelSettingsProps) {
     setNewColor("grey");
   }
 
+  function usageLabel(id: string): string {
+    const count = usage[id] ?? 0;
+    return count === 0 ? t("settings.labels.usageNone") : `${count} ${t("settings.labels.usage")}`;
+  }
+
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-large font-medium text-text-primary">{t("settings.labels.title")}</h2>
+    <SettingsPage title={t("settings.labels.title")} description={t("settings.labels.description")}>
+      <SettingsSection flush>
+        {labels.length === 0 && (
+          <p className="text-mini text-text-tertiary">{t("settings.labels.empty")}</p>
+        )}
 
-      {labels.length === 0 && (
-        <p className="text-mini text-text-tertiary">{t("settings.labels.empty")}</p>
-      )}
-
-      <div className="flex flex-col gap-2">
         {labels.map((label) => (
           <div key={label.id} className="flex items-center gap-2">
-            <Badge color={label.color} className="shrink-0">
+            <Badge color={label.color} className="w-28 shrink-0 justify-center truncate">
               {label.name}
             </Badge>
             <InlineRenameInput
@@ -90,7 +98,13 @@ export function LabelSettings({ labels: initialLabels }: LabelSettingsProps) {
               ariaLabel={t("settings.labels.name.placeholder")}
               onRename={(next) => handleRename(label, next)}
             />
-            <ColorSelect value={label.color} onValueChange={(color) => handleColorChange(label, color)} />
+            <span className="w-24 shrink-0 text-right text-mini text-text-tertiary [font-variant-numeric:tabular-nums]">
+              {usageLabel(label.id)}
+            </span>
+            <ColorSelect
+              value={label.color}
+              onValueChange={(color) => handleColorChange(label, color)}
+            />
             <Button
               variant="ghost"
               size="icon"
@@ -101,24 +115,26 @@ export function LabelSettings({ labels: initialLabels }: LabelSettingsProps) {
             </Button>
           </div>
         ))}
-      </div>
+      </SettingsSection>
 
-      <div className="flex items-center gap-2">
-        <Label className="sr-only" htmlFor="new-label-name">
-          {t("settings.labels.name.placeholder")}
-        </Label>
-        <Input
-          id="new-label-name"
-          className="flex-1"
-          placeholder={t("settings.labels.name.placeholder")}
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-        />
-        <ColorSelect value={newColor} onValueChange={setNewColor} />
-        <Button onClick={handleCreate} loading={creating} disabled={!newName.trim()}>
-          {t("settings.labels.add")}
-        </Button>
-      </div>
+      <SettingsSection title={t("settings.labels.addSection")} flush>
+        <div className="flex items-center gap-2">
+          <Input
+            className="flex-1"
+            aria-label={t("settings.labels.name.placeholder")}
+            placeholder={t("settings.labels.name.placeholder")}
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void handleCreate();
+            }}
+          />
+          <ColorSelect value={newColor} onValueChange={setNewColor} />
+          <Button onClick={handleCreate} loading={creating} disabled={!newName.trim()}>
+            {t("settings.labels.add")}
+          </Button>
+        </div>
+      </SettingsSection>
 
       <ConfirmDialog
         open={pendingDelete != null}
@@ -132,6 +148,6 @@ export function LabelSettings({ labels: initialLabels }: LabelSettingsProps) {
           if (pendingDelete) void handleDelete(pendingDelete);
         }}
       />
-    </section>
+    </SettingsPage>
   );
 }

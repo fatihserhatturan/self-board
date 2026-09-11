@@ -13,22 +13,22 @@ import {
 describe("successPercent", () => {
   it("boş cycle için 0 döner", () => {
     assert.equal(
-      successPercent({ backlog: 0, todo: 0, inProgress: 0, done: 0, canceled: 0 }),
+      successPercent({ backlog: 0, unstarted: 0, started: 0, completed: 0, canceled: 0 }),
       0,
     );
   });
 
   it("canceled'ı tamamlanmış sayar", () => {
     assert.equal(
-      successPercent({ backlog: 0, todo: 0, inProgress: 0, done: 1, canceled: 1 }),
+      successPercent({ backlog: 0, unstarted: 0, started: 0, completed: 1, canceled: 1 }),
       100,
     );
   });
 
-  it("in-progress issue'ları çeyrek ağırlıkla sayar", () => {
-    // 1 done + 1 in-progress (0.25) / 4 = %31
+  it("started tipindeki issue'ları çeyrek ağırlıkla sayar", () => {
+    // 1 completed + 1 started (0.25) / 4 = %31
     assert.equal(
-      successPercent({ backlog: 2, todo: 0, inProgress: 1, done: 1, canceled: 0 }),
+      successPercent({ backlog: 2, unstarted: 0, started: 1, completed: 1, canceled: 0 }),
       31,
     );
   });

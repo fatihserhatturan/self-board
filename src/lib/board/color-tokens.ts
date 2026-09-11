@@ -30,6 +30,19 @@ export const COLOR_DOT_CLASS: Record<LabelColor, string> = {
   green: "bg-label-green",
 };
 
+/** Rengin metin/ikon karşılığı — durum ikonları bunu kullanıyor. */
+export const COLOR_TEXT_CLASS: Record<LabelColor, string> = {
+  teal: "text-label-teal",
+  red: "text-label-red",
+  mustard: "text-label-mustard",
+  yellow: "text-label-yellow",
+  orange: "text-label-orange",
+  purple: "text-label-purple",
+  blue: "text-label-blue",
+  grey: "text-label-grey",
+  green: "text-label-green",
+};
+
 /**
  * Tonlu zemin + aynı renkte metin. Üzerinde yazı taşıyan renkli yüzeyler
  * (proje ikonu baş harfi) bunu kullanır: dolu renk üzerine beyaz metin, parlak

@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select";
 import type { PriorityLevel } from "@/components/ui/priority-icon";
-import type { StatusState } from "@/components/ui/status-icon";
 import { useLocale } from "@/components/locale-provider";
 import type { IssueLabel, Person } from "@/lib/data/issues";
 import type { Cycle } from "@/lib/data/cycles";
-import { priorityLevels, statusStates } from "@/lib/token-manifest";
+import { priorityLevels } from "@/lib/token-manifest";
+import type { WorkflowState } from "@/lib/board/workflow-config";
 import { EMPTY_FILTER_CRITERIA, type IssueFilterCriteria } from "@/lib/board/issue-view-config";
 import { cycleLabel } from "@/lib/board/cycle-label";
 
@@ -23,6 +23,7 @@ export interface IssueFilterPanelProps {
   users: Person[];
   labels: IssueLabel[];
   cycles: Cycle[];
+  states: WorkflowState[];
 }
 
 export function IssueFilterPanel({
@@ -32,13 +33,11 @@ export function IssueFilterPanel({
   users,
   labels,
   cycles,
+  states,
 }: IssueFilterPanelProps) {
   const { t } = useLocale();
 
-  const statusOptions = statusStates.map((status) => ({
-    value: status,
-    label: t(`board.status.${status}`),
-  }));
+  const stateOptions = states.map((state) => ({ value: state.id, label: state.name }));
   const priorityOptions = priorityLevels.map((priority) => ({
     value: priority,
     label: t(`board.priority.${priority}`),
@@ -55,9 +54,9 @@ export function IssueFilterPanel({
       <div className="flex flex-col gap-1.5">
         <Label>{t("issueForm.status.label")}</Label>
         <MultiSelect
-          options={statusOptions}
-          value={criteria.statuses}
-          onValueChange={(v) => onChange({ ...criteria, statuses: v as StatusState[] })}
+          options={stateOptions}
+          value={criteria.stateIds}
+          onValueChange={(v) => onChange({ ...criteria, stateIds: v })}
           placeholder={t("filter.status.placeholder")}
           className="w-full"
         />

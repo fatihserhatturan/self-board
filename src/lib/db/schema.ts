@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { seedIssues, seedLabels, seedPeople } from "@/lib/db/seed-data";
+import { DEFAULT_STATES } from "@/lib/board/workflow-config";
 
 const DDL_SQL = `
 CREATE TABLE IF NOT EXISTS users (
@@ -46,13 +47,26 @@ CREATE TABLE IF NOT EXISTS cycle_snapshots (
   PRIMARY KEY (cycle_id, date)
 );
 
+-- Board sütunları. Kullanıcı proje başına istediği kadar durum tanımlıyor; her
+-- biri beş sabit sistem tipinden birine bağlı (bkz. lib/board/workflow-config.ts).
+-- Cycle metrikleri durumun adına değil tipine bakıyor.
+CREATE TABLE IF NOT EXISTS workflow_states (
+  id         TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  type       TEXT NOT NULL CHECK (type IN ('backlog','unstarted','started','completed','canceled')),
+  color      TEXT NOT NULL,
+  icon       TEXT NOT NULL,
+  position   INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS issues (
   id          TEXT PRIMARY KEY,
   project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   cycle_id    TEXT REFERENCES cycles(id),
   title       TEXT NOT NULL,
   description TEXT,
-  status      TEXT NOT NULL CHECK (status IN ('backlog','todo','in-progress','done','canceled')),
+  state_id    TEXT REFERENCES workflow_states(id),
   priority    TEXT NOT NULL CHECK (priority IN ('no-priority','urgent','high','medium','low')),
   assignee_id TEXT REFERENCES users(id),
   created_at  TEXT NOT NULL
@@ -97,9 +111,19 @@ CREATE TABLE IF NOT EXISTS views (
   created_at   TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status);
+-- Uygulama tercihleri. Anahtar-değer çünkü her yeni tercih için migration
+-- yazmak istemiyoruz; tipler ve varsayılanlar lib/data/preferences.ts içinde.
+-- Sunucunun okuması gereken tercihler burada tutuluyor (ör. başlangıç sayfası,
+-- kök route'un yönlendirmesini belirliyor); tema ve dil ilk boyamadan önce
+-- gerektiği için localStorage'da kalıyor.
+CREATE TABLE IF NOT EXISTS app_settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_issue_notes_issue ON issue_notes(issue_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_cycles_project ON cycles(project_id, number);
+CREATE INDEX IF NOT EXISTS idx_states_project ON workflow_states(project_id, position);
 `;
 
 const LEGACY_CURRENT_USER_EMAIL = "turan.fatih@dgpaysit.com";
@@ -113,6 +137,126 @@ export function ensureSchema(db: DatabaseSync) {
   ensureCurrentUserColumn(db);
   ensureAttachmentIssueIdColumn(db);
   ensureProjectIssueSeq(db);
+  ensureWorkflowStates(db);
+}
+
+/** Bir projeye varsayılan durumları basar ve `legacyStatus -> id` eşlemesini döner. */
+export function seedProjectStates(db: DatabaseSync, projectId: string): Map<string, string> {
+  const insert = db.prepare(
+    "INSERT INTO workflow_states (id, project_id, name, type, color, icon, position) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  );
+  const mapping = new Map<string, string>();
+  DEFAULT_STATES.forEach((state, index) => {
+    const id = crypto.randomUUID();
+    insert.run(id, projectId, state.name, state.type, state.color, state.icon, index);
+    mapping.set(state.legacyStatus, id);
+  });
+  return mapping;
+}
+
+/**
+ * Durumlar bu sürümde sabit bir birleşim tipinden `workflow_states` satırlarına
+ * taşındı. Var olan DB'lerde: (1) her projeye bugünküyle birebir aynı beş
+ * varsayılan durum eklenir, (2) `issues.state_id` kolonu açılıp eski `status`
+ * literali karşılık gelen durum id'siyle doldurulur, (3) kaydedilmiş
+ * görünümlerin `filters.statuses` dizisi aynı eşlemeyle `stateIds`'e çevrilir —
+ * aksi halde o filtreler hiçbir issue eşleştirmezdi.
+ *
+ * Eski `status` kolonu bilerek DROP edilmiyor: `CHECK` kısıtlı bir kolonu
+ * düşürmek SQLite'ta tabloyu yeniden yazmayı gerektiriyor ve geri dönüş yolunu
+ * kapatıyor. Kolon artık ne okunuyor ne yazılıyor.
+ */
+function ensureWorkflowStates(db: DatabaseSync) {
+  const { count } = db.prepare("SELECT COUNT(*) AS count FROM workflow_states").get() as {
+    count: number;
+  };
+
+  const projects = db.prepare("SELECT id FROM projects").all() as { id: string }[];
+  const mappingByProject = new Map<string, Map<string, string>>();
+
+  if (count === 0) {
+    for (const project of projects) {
+      mappingByProject.set(project.id, seedProjectStates(db, project.id));
+    }
+  }
+
+  const issueColumns = db.prepare("PRAGMA table_info(issues)").all() as { name: string }[];
+  const hasStateId = issueColumns.some((column) => column.name === "state_id");
+  const hasLegacyStatus = issueColumns.some((column) => column.name === "status");
+
+  if (!hasStateId) {
+    db.exec("ALTER TABLE issues ADD COLUMN state_id TEXT REFERENCES workflow_states(id)");
+
+    if (hasLegacyStatus) {
+      const update = db.prepare(
+        "UPDATE issues SET state_id = ? WHERE project_id = ? AND status = ?",
+      );
+      for (const project of projects) {
+        const mapping = mappingByProject.get(project.id) ?? readStateMapping(db, project.id);
+        for (const [legacyStatus, stateId] of mapping) {
+          update.run(stateId, project.id, legacyStatus);
+        }
+      }
+      migrateViewFilters(db, mappingByProject, projects);
+    }
+  }
+
+  db.exec("CREATE INDEX IF NOT EXISTS idx_issues_state ON issues(state_id)");
+}
+
+/** Zaten var olan durumlardan `legacyStatus -> id` eşlemesini ada göre kurar. */
+function readStateMapping(db: DatabaseSync, projectId: string): Map<string, string> {
+  const rows = db
+    .prepare("SELECT id, name FROM workflow_states WHERE project_id = ?")
+    .all(projectId) as { id: string; name: string }[];
+
+  const byName = new Map(rows.map((row) => [row.name, row.id]));
+  const mapping = new Map<string, string>();
+  for (const state of DEFAULT_STATES) {
+    const id = byName.get(state.name);
+    if (id) mapping.set(state.legacyStatus, id);
+  }
+  return mapping;
+}
+
+/** Kaydedilmiş görünümlerdeki `statuses` dizisini `stateIds`'e çevirir. */
+function migrateViewFilters(
+  db: DatabaseSync,
+  mappingByProject: Map<string, Map<string, string>>,
+  projects: { id: string }[],
+): void {
+  const views = db.prepare("SELECT id, project_id, filters_json FROM views").all() as {
+    id: string;
+    project_id: string;
+    filters_json: string;
+  }[];
+  if (views.length === 0) return;
+
+  for (const project of projects) {
+    if (!mappingByProject.has(project.id)) {
+      mappingByProject.set(project.id, readStateMapping(db, project.id));
+    }
+  }
+
+  const update = db.prepare("UPDATE views SET filters_json = ? WHERE id = ?");
+  for (const view of views) {
+    let filters: Record<string, unknown>;
+    try {
+      filters = JSON.parse(view.filters_json) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+
+    const legacy = filters.statuses;
+    if (!Array.isArray(legacy)) continue;
+
+    const mapping = mappingByProject.get(view.project_id);
+    filters.stateIds = mapping
+      ? legacy.map((status) => mapping.get(String(status))).filter(Boolean)
+      : [];
+    delete filters.statuses;
+    update.run(JSON.stringify(filters), view.id);
+  }
 }
 
 /**
@@ -185,7 +329,7 @@ function ensureProjectsAdded(db: DatabaseSync) {
       `ALTER TABLE issues ADD COLUMN project_id TEXT NOT NULL DEFAULT '${DEFAULT_PROJECT.id}'`,
     );
   }
-  db.exec("CREATE INDEX IF NOT EXISTS idx_issues_project_status ON issues(project_id, status)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_issues_project ON issues(project_id)");
 
   const viewColumns = db.prepare("PRAGMA table_info(views)").all() as { name: string }[];
   if (!viewColumns.some((column) => column.name === "project_id")) {
@@ -254,7 +398,6 @@ function ensureTeamsRemoved(db: DatabaseSync) {
     db.exec("ALTER TABLE views DROP COLUMN team_id");
   }
   db.exec("DROP TABLE IF EXISTS teams");
-  db.exec("CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status)");
 }
 
 /**
@@ -308,8 +451,12 @@ export function seedIfEmpty(db: DatabaseSync) {
     const insertLabel = db.prepare("INSERT INTO labels (id, name, color) VALUES (?, ?, ?)");
     for (const label of seedLabels) insertLabel.run(label.id, label.name, label.color);
 
+    // Örnek issue'lar eski durum anahtarlarıyla tanımlı; `ensureWorkflowStates`
+    // varsayılan durumları zaten basmış olduğu için eşlemeyi oradan okuyoruz.
+    const stateIds = readStateMapping(db, DEFAULT_PROJECT.id);
+
     const insertIssue = db.prepare(
-      `INSERT INTO issues (id, project_id, title, description, status, priority, assignee_id, created_at)
+      `INSERT INTO issues (id, project_id, title, description, state_id, priority, assignee_id, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const insertIssueLabel = db.prepare(
@@ -321,7 +468,7 @@ export function seedIfEmpty(db: DatabaseSync) {
         DEFAULT_PROJECT.id,
         issue.title,
         issue.description ?? null,
-        issue.status,
+        stateIds.get(issue.status) ?? null,
         issue.priority,
         issue.assigneeId ?? null,
         issue.createdAt,

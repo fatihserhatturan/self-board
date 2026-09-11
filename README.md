@@ -9,8 +9,10 @@ Tüm veri makinede, tek bir SQLite dosyasında durur — sunucu, hesap ya da ağ
 - **Projeler** — her biri kendi issue ID öneki (`COR-12`), rengi ve ikonu ile.
 - **Issue'lar** — durum, öncelik, atanan, etiketler, zengin metin açıklaması (görsel
   yükleme ve bağlantı önizlemesi dahil) ve notlar.
-- **Liste ve pano görünümü** — panoda sürükle-bırak ile durum değiştirme, her ikisinde
-  sağ tık menüsüyle hızlı durum/öncelik değişikliği.
+- **Yapılandırılabilir iş akışı** — pano sütunları proje başına tanımlanıyor: ekle, sil,
+  yeniden adlandır, sırala, renk ve ikon ata.
+- **Liste ve pano görünümü** — gruplama alanı seçilebilir (durum, atanan, öncelik, etiket,
+  cycle), panoda sürükle-bırak seçilen alanı değiştirir, her ikisinde sağ tık menüsü var.
 - **Cycle'lar** — Linear tarzı otomatik tekrarlayan dönemler, tamamlanmamış issue'ların
   devri, burnup ve hız grafikleri, kapasite ölçeri.
 - **Kaydedilmiş görünümler** — filtre ve görünüm ayarlarının adlandırılmış anlık görüntüsü.
@@ -49,6 +51,7 @@ dizinindedir (Windows'ta `%APPDATA%/Self Board/self-board.db`).
 | Katman | Yer | Not |
 | --- | --- | --- |
 | Sayfalar | `src/app/(app)/` | Hepsi `force-dynamic`; her istekte SQLite okunur |
+| Ayarlar | `src/app/settings/` | `(app)` grubunun dışında: pencereyi devralır, kendi kenar çubuğu vardır |
 | Okuma | `src/lib/data/` | React `cache()` ile istek başına tekilleştirilmiş sorgular |
 | Yazma | `src/lib/actions/` | Server Action'lar, `ActionResult<T>` döner, `revalidatePath` çağırır |
 | Şema | `src/lib/db/schema.ts` | DDL + elle yazılmış ileri yönlü migration'lar |
@@ -60,11 +63,23 @@ Birkaç bilinçli karar:
 - **`PRAGMA foreign_keys` açılmıyor.** Cascade silmeler sunucu eylemlerinde elle
   yapılıyor (`deleteIssue`, `deleteProject`, `deleteLabel`). Şema `REFERENCES`
   tanımlıyor ama uygulanmıyor — yeni bir silme yolu eklerken temizliği elle yazmak gerekir.
+- **Durumlar kullanıcı tanımlı, tipler sabit.** `workflow_states` satırları proje başına
+  ve serbestçe düzenlenebiliyor, ama her durum beş sabit sistem tipinden birine bağlı
+  (`backlog`, `unstarted`, `started`, `completed`, `canceled`). Cycle devri, burnup
+  grafiği ve başarı yüzdesi durumun adına değil tipine bakıyor — tip olmasaydı serbest
+  sütunlar bu metrikleri anlamsızlaştırırdı. Tipler `src/lib/board/workflow-config.ts`
+  içinde. `issues` tablosundaki eski `status` kolonu geçişten sonra bilerek düşürülmedi:
+  `CHECK` kısıtlı bir kolonu SQLite'ta kaldırmak tabloyu yeniden yazmayı gerektiriyor.
 - **Cycle'lar cron olmadan üretiliyor.** `getCycles()` istek anında bitmiş cycle'ları
   yakalar, tamamlanmamış issue'ları devreder ve günlük snapshot yazar. Yani bir okuma
   yolu yazma yapar; ayrıntılı gerekçe `src/lib/data/cycles.ts` içinde.
 - **`src/components/ui/` yalnızca kullanılan bileşenleri içerir.** Ayrı bir tasarım
   sistemi kataloğu yok; bir bileşen uygulamada bir yerde kullanılmıyorsa silinir.
+- **Tercihler ikiye ayrılmış.** Sunucunun okuması gerekenler (başlangıç sayfası, yeni
+  issue varsayılanları, tarih biçimi) `app_settings` anahtar-değer tablosunda; tipleri
+  ve varsayılanları `src/lib/preferences-config.ts` içinde, DB'siz tutuluyor ki client
+  bileşenler `node:sqlite`'ı bundle'a çekmesin. Tema ve dil ilk boyamadan önce
+  gerektiği için `localStorage`'da kalıyor.
 - **Tasarım token'ları** `src/styles/tokens.css` içinde. Koyu tema değerleri Linear'ın
   Figma topluluk dosyasından alınmış; açık tema türetilmiştir.
 

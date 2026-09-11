@@ -2,11 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
+import {
+  SettingsPage,
+  SettingsRow,
+  SettingsSection,
+} from "@/components/settings/settings-primitives";
 import { updateCurrentUser } from "@/lib/actions/users";
 import type { Person } from "@/lib/data/issues";
 
@@ -20,6 +25,8 @@ export function ProfileSettings({ currentUser }: ProfileSettingsProps) {
   const [name, setName] = useState(currentUser?.name ?? "");
   const [email, setEmail] = useState(currentUser?.email ?? "");
   const [submitting, setSubmitting] = useState(false);
+
+  const dirty = name !== (currentUser?.name ?? "") || email !== (currentUser?.email ?? "");
 
   async function handleSave() {
     setSubmitting(true);
@@ -38,34 +45,47 @@ export function ProfileSettings({ currentUser }: ProfileSettingsProps) {
   }
 
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-large font-medium text-text-primary">{t("settings.profile.title")}</h2>
+    <SettingsPage title={t("settings.profile.title")} description={t("settings.profile.description")}>
+      <SettingsSection>
+        <SettingsRow
+          label={t("settings.profile.avatar.label")}
+          description={t("settings.profile.avatar.hint")}
+          control={
+            <div className="flex justify-end">
+              <Avatar name={name || "?"} size="lg" />
+            </div>
+          }
+        />
+        <SettingsRow
+          label={t("settings.profile.name.label")}
+          htmlFor="profile-name"
+          control={
+            <Input id="profile-name" value={name} onChange={(e) => setName(e.target.value)} />
+          }
+        />
+        <SettingsRow
+          label={t("settings.profile.email.label")}
+          htmlFor="profile-email"
+          control={
+            <Input
+              id="profile-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          }
+        />
+      </SettingsSection>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="profile-name">{t("settings.profile.name.label")}</Label>
-          <Input id="profile-name" value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="profile-email">{t("settings.profile.email.label")}</Label>
-          <Input
-            id="profile-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
+      <div className="flex justify-end">
+        <Button
+          onClick={handleSave}
+          loading={submitting}
+          disabled={!dirty || !name.trim() || !email.trim()}
+        >
+          {t("common.save")}
+        </Button>
       </div>
-
-      <Button
-        className="self-start"
-        onClick={handleSave}
-        loading={submitting}
-        disabled={!name.trim() || !email.trim()}
-      >
-        {t("common.save")}
-      </Button>
-    </section>
+    </SettingsPage>
   );
 }

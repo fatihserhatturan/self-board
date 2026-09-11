@@ -1,5 +1,5 @@
 import type { PriorityLevel } from "@/components/ui/priority-icon";
-import type { StatusState } from "@/components/ui/status-icon";
+import type { IssueGroupKey } from "@/lib/board/issue-grouping";
 
 /**
  * `IssueFilterCriteria`/`IssueViewOptions` şekilleri, filtre/görünüm panelleriyle
@@ -9,7 +9,7 @@ import type { StatusState } from "@/components/ui/status-icon";
  * RSC client-reference sınırını ihlal etmesin diye.
  */
 export interface IssueFilterCriteria {
-  statuses: StatusState[];
+  stateIds: string[];
   priorities: PriorityLevel[];
   assigneeIds: string[];
   labelIds: string[];
@@ -17,7 +17,7 @@ export interface IssueFilterCriteria {
 }
 
 export const EMPTY_FILTER_CRITERIA: IssueFilterCriteria = {
-  statuses: [],
+  stateIds: [],
   priorities: [],
   assigneeIds: [],
   labelIds: [],
@@ -28,6 +28,8 @@ export type IssueSortKey = "created" | "priority" | "title";
 
 export interface IssueViewOptions {
   sortKey: IssueSortKey;
+  /** Panonun ve listenin neye göre gruplanacağı. */
+  groupBy: IssueGroupKey;
   showAssignee: boolean;
   showLabels: boolean;
   showPriority: boolean;
@@ -35,6 +37,7 @@ export interface IssueViewOptions {
 
 export const DEFAULT_VIEW_OPTIONS: IssueViewOptions = {
   sortKey: "created",
+  groupBy: "status",
   showAssignee: true,
   showLabels: true,
   showPriority: true,

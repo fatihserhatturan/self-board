@@ -7,21 +7,38 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
+import { usePreferences } from "@/components/preferences-provider";
+import { useAppShell } from "@/components/app-shell/app-shell-provider";
 import { IssueDialogForm } from "@/components/board/issue-dialog-form";
 import { createIssue, type IssueFormValues } from "@/lib/actions/issues";
 import type { IssueLabel, Person } from "@/lib/data/issues";
 import type { Cycle } from "@/lib/data/cycles";
+import type { WorkflowState } from "@/lib/board/workflow-config";
+import type { Preferences } from "@/lib/preferences-config";
 
+/**
+ * Formun açılış değerleri. Durum ve öncelik artık sabit değil, Ayarlar >
+ * Tercihler altından geliyor. Atanan için sıra: çağıranın açıkça verdiği değer
+ * (ör. My Issues sayfası), yoksa "issue'ları bana ata" tercihi, yoksa boş.
+ */
 function buildDefaultValues(
+  preferences: Preferences,
+  states: WorkflowState[],
+  currentUserId: string | null,
   defaultAssigneeId?: string | null,
   defaultCycleId?: string | null,
 ): IssueFormValues {
+  const autoAssigned = preferences.autoAssignToMe ? currentUserId : null;
+  // Tercih somut bir durum değil sistem tipi tutuyor (durumlar proje başına);
+  // o tipteki ilk durum seçiliyor, yoksa projenin ilk durumu.
+  const preferred =
+    states.find((state) => state.type === preferences.defaultIssueStateType) ?? states[0];
   return {
     title: "",
     description: "",
-    status: "backlog",
-    priority: "no-priority",
-    assigneeId: defaultAssigneeId ?? null,
+    stateId: preferred?.id ?? "",
+    priority: preferences.defaultIssuePriority,
+    assigneeId: defaultAssigneeId ?? autoAssigned,
     cycleId: defaultCycleId ?? null,
     labelIds: [],
   };
@@ -34,6 +51,7 @@ export interface CreateIssueDialogProps {
   users: Person[];
   labels: IssueLabel[];
   cycles: Cycle[];
+  states: WorkflowState[];
   defaultAssigneeId?: string | null;
   defaultCycleId?: string | null;
 }
@@ -45,13 +63,16 @@ export function CreateIssueDialog({
   users,
   labels,
   cycles,
+  states,
   defaultAssigneeId,
   defaultCycleId,
 }: CreateIssueDialogProps) {
   const { t } = useLocale();
   const router = useRouter();
+  const preferences = usePreferences();
+  const { currentUserId } = useAppShell();
   const [values, setValues] = useState<IssueFormValues>(() =>
-    buildDefaultValues(defaultAssigneeId, defaultCycleId),
+    buildDefaultValues(preferences, states, currentUserId, defaultAssigneeId, defaultCycleId),
   );
   const [titleError, setTitleError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
@@ -64,7 +85,7 @@ export function CreateIssueDialog({
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) {
-      setValues(buildDefaultValues(defaultAssigneeId, defaultCycleId));
+      setValues(buildDefaultValues(preferences, states, currentUserId, defaultAssigneeId, defaultCycleId));
       setTitleError(undefined);
     }
   }
@@ -119,6 +140,7 @@ export function CreateIssueDialog({
               users={users}
               labels={labels}
               cycles={cycles}
+              states={states}
               titleError={titleError}
             />
           </div>

@@ -14,6 +14,7 @@ import { IssueNotes } from "@/components/board/issue-notes";
 import { deleteIssue, updateIssue, type IssueFormValues } from "@/lib/actions/issues";
 import type { BoardIssue, IssueLabel, Person } from "@/lib/data/issues";
 import type { Cycle } from "@/lib/data/cycles";
+import type { WorkflowState } from "@/lib/board/workflow-config";
 
 export interface IssueDetailDialogProps {
   issue: BoardIssue | null;
@@ -22,13 +23,14 @@ export interface IssueDetailDialogProps {
   users: Person[];
   labels: IssueLabel[];
   cycles: Cycle[];
+  states: WorkflowState[];
 }
 
 function toFormValues(issue: BoardIssue): IssueFormValues {
   return {
     title: issue.title,
     description: issue.description ?? "",
-    status: issue.status,
+    stateId: issue.state.id,
     priority: issue.priority,
     assigneeId: issue.assignee?.id ?? null,
     cycleId: issue.cycleId,
@@ -43,6 +45,7 @@ export function IssueDetailDialog({
   users,
   labels,
   cycles,
+  states,
 }: IssueDetailDialogProps) {
   const { t } = useLocale();
   const router = useRouter();
@@ -145,6 +148,7 @@ export function IssueDetailDialog({
               users={users}
               labels={labels}
               cycles={cycles}
+              states={states}
               titleError={titleError}
             />
             <Divider className="my-4" />

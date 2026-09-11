@@ -1,6 +1,5 @@
 import type { BadgeProps } from "@/components/ui/badge";
 import type { PriorityLevel } from "@/components/ui/priority-icon";
-import type { StatusState } from "@/components/ui/status-icon";
 
 export interface SeedPerson {
   id: string;
@@ -19,7 +18,8 @@ export interface SeedIssue {
   id: string;
   title: string;
   description?: string;
-  status: StatusState;
+  /** Varsayılan durumların `legacyStatus` anahtarı — `seedIfEmpty` bunu durum id'sine çevirir. */
+  status: string;
   priority: PriorityLevel;
   assigneeId?: string;
   labelIds: string[];

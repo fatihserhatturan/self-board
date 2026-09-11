@@ -10,19 +10,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineRenameInput } from "@/components/ui/inline-rename-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
 import { CycleCapacityMeter } from "@/components/cycles/cycle-capacity-meter";
 import { CycleSummaryPanel } from "@/components/cycles/cycle-summary-panel";
 import { CycleVelocityChart } from "@/components/cycles/cycle-velocity-chart";
-import { renameCycle, updateCycleDuration } from "@/lib/actions/cycles";
+import { renameCycle } from "@/lib/actions/cycles";
 import type { Cycle, CycleSnapshot } from "@/lib/data/cycles";
 import { averageVelocity, successPercent } from "@/lib/board/cycle-metrics";
 import { getCycleStatus, parseIsoDate, todayIsoDate, type CycleStatus } from "@/lib/board/cycle-status";
@@ -30,12 +23,9 @@ import { cycleLabel } from "@/lib/board/cycle-label";
 import { useDateFormatter } from "@/lib/use-date-formatter";
 import { cn } from "@/lib/utils";
 
-const DURATION_WEEK_OPTIONS = [1, 2, 3, 4];
-
 export interface CyclesContentProps {
   projectId: string;
   projectName: string;
-  cycleDurationDays: number;
   cycles: Cycle[];
   snapshots: Record<string, CycleSnapshot[]>;
 }
@@ -43,18 +33,15 @@ export interface CyclesContentProps {
 export function CyclesContent({
   projectId,
   projectName,
-  cycleDurationDays,
   cycles: initialCycles,
   snapshots,
 }: CyclesContentProps) {
   const { t } = useLocale();
   const [cycles, setCycles] = useState(initialCycles);
-  const [duration, setDuration] = useState(cycleDurationDays);
-  const [savingDuration, setSavingDuration] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const today = useMemo(() => todayIsoDate(), []);
 
-  const formatter = useDateFormatter({ day: "numeric", month: "short" });
+  const { formatDayMonth } = useDateFormatter();
 
   const grouped = useMemo(() => {
     const groups: Record<CycleStatus, Cycle[]> = { active: [], upcoming: [], completed: [] };
@@ -75,20 +62,8 @@ export function CyclesContent({
     }
   }
 
-  async function handleDurationChange(weeks: string) {
-    const days = Number(weeks) * 7;
-    setDuration(days);
-    setSavingDuration(true);
-    const result = await updateCycleDuration(projectId, days);
-    setSavingDuration(false);
-    if (!result.ok) {
-      setDuration(cycleDurationDays);
-      toast.error(t("cycles.durationUpdateError"));
-    }
-  }
-
   function formatRange(cycle: Cycle) {
-    return `${formatter.format(parseIsoDate(cycle.startsAt))} – ${formatter.format(parseIsoDate(cycle.endsAt))}`;
+    return `${formatDayMonth(parseIsoDate(cycle.startsAt))} – ${formatDayMonth(parseIsoDate(cycle.endsAt))}`;
   }
 
   function renderNameInput(cycle: Cycle, className?: string) {
@@ -184,31 +159,7 @@ export function CyclesContent({
 
   return (
     <>
-      <TopBar
-        title={t("nav.cycles")}
-        breadcrumb={projectName}
-        viewOptionsTrigger={
-          <div className="flex items-center gap-2">
-            <span className="text-mini text-text-tertiary">{t("cycles.duration.label")}</span>
-            <Select
-              value={String(duration / 7)}
-              onValueChange={handleDurationChange}
-              disabled={savingDuration}
-            >
-              <SelectTrigger size="sm" className="w-28">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DURATION_WEEK_OPTIONS.map((weeks) => (
-                  <SelectItem key={weeks} value={String(weeks)}>
-                    {weeks} {t("cycles.duration.weeksUnit")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        }
-      />
+      <TopBar title={t("nav.cycles")} breadcrumb={projectName} />
 
       {cycles.length === 0 ? (
         <EmptyState icon={RotateCw} title={t("emptyState.cycles.title")} />

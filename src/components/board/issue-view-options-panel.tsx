@@ -10,6 +10,7 @@ import {
   type IssueSortKey,
   type IssueViewOptions,
 } from "@/lib/board/issue-view-config";
+import { ISSUE_GROUP_KEYS, type IssueGroupKey } from "@/lib/board/issue-grouping";
 
 export { DEFAULT_VIEW_OPTIONS, type IssueSortKey, type IssueViewOptions };
 
@@ -25,6 +26,24 @@ export function IssueViewOptionsPanel({ options, onChange }: IssueViewOptionsPan
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("viewOptions.groupBy.label")}</Label>
+        <RadioGroup
+          value={options.groupBy}
+          onValueChange={(v) => onChange({ ...options, groupBy: v as IssueGroupKey })}
+          className="flex flex-col gap-2"
+        >
+          {ISSUE_GROUP_KEYS.map((key) => (
+            <label key={key} className="flex items-center gap-2 text-small text-text-primary">
+              <RadioGroupItem value={key} />
+              {t(key === "label" ? "viewOptions.groupBy.label.option" : `viewOptions.groupBy.${key}`)}
+            </label>
+          ))}
+        </RadioGroup>
+      </div>
+
+      <Divider />
+
       <div className="flex flex-col gap-1.5">
         <Label>{t("viewOptions.sort.label")}</Label>
         <RadioGroup

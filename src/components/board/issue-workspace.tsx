@@ -33,6 +33,9 @@ import type { BoardIssue, IssueLabel, Person } from "@/lib/data/issues";
 import type { Cycle, CycleSnapshot } from "@/lib/data/cycles";
 import type { SavedView } from "@/lib/data/views";
 import { countActiveFilters } from "@/lib/board/filter-summary";
+import { groupIssues } from "@/lib/board/issue-grouping";
+import type { WorkflowState } from "@/lib/board/workflow-config";
+import { WorkflowStatesProvider } from "@/components/board/workflow-states-provider";
 import { cycleLabel } from "@/lib/board/cycle-label";
 import { todayIsoDate } from "@/lib/board/cycle-status";
 import { useLocalStorageState } from "@/lib/use-local-storage-state";
@@ -57,6 +60,8 @@ export interface IssueWorkspaceProps {
   labels: IssueLabel[];
   cycles?: Cycle[];
   cycleSnapshots?: CycleSnapshot[];
+  /** Aktif projenin durumları. `null` = projeler-arası görünüm (My Issues): sistem tipine göre gruplanır. */
+  states?: WorkflowState[] | null;
   defaultAssigneeId?: string | null;
   initialView?: SavedView;
 }
@@ -71,6 +76,7 @@ export function IssueWorkspace({
   labels,
   cycles = [],
   cycleSnapshots = [],
+  states = null,
   defaultAssigneeId,
   initialView,
 }: IssueWorkspaceProps) {
@@ -147,7 +153,7 @@ export function IssueWorkspace({
 
   const filteredIssues = useMemo(() => {
     return issues.filter((issue) => {
-      if (filterCriteria.statuses.length > 0 && !filterCriteria.statuses.includes(issue.status)) {
+      if (filterCriteria.stateIds.length > 0 && !filterCriteria.stateIds.includes(issue.state.id)) {
         return false;
       }
       if (
@@ -182,10 +188,26 @@ export function IssueWorkspace({
     return arr;
   }, [filteredIssues, viewOptions.sortKey]);
 
+  const cycleLabels = useMemo(
+    () => new Map(cycles.map((cycle) => [cycle.id, cycleLabel(cycle)])),
+    [cycles],
+  );
+
+  const groups = useMemo(
+    () =>
+      groupIssues(
+        sortedIssues,
+        viewOptions.groupBy,
+        { states, users, labels, cycles },
+        cycleLabels,
+      ),
+    [sortedIssues, viewOptions.groupBy, states, users, labels, cycles, cycleLabels],
+  );
+
   const activeFilterCount = countActiveFilters(filterCriteria);
 
   return (
-    <>
+    <WorkflowStatesProvider states={states ?? []}>
       <TopBar
         title={t(titleKey)}
         breadcrumb={breadcrumb}
@@ -218,6 +240,7 @@ export function IssueWorkspace({
                 users={users}
                 labels={labels}
                 cycles={cycles}
+                states={states ?? []}
               />
             </PopoverContent>
           </Popover>
@@ -281,9 +304,14 @@ export function IssueWorkspace({
               }}
             />
           ) : view === "board" ? (
-            <Board issues={sortedIssues} onOpenIssue={openDetail} viewOptions={viewOptions} />
+            <Board
+              groups={groups}
+              groupBy={viewOptions.groupBy}
+              onOpenIssue={openDetail}
+              viewOptions={viewOptions}
+            />
           ) : (
-            <IssueList issues={sortedIssues} onOpenIssue={openDetail} viewOptions={viewOptions} />
+            <IssueList groups={groups} onOpenIssue={openDetail} viewOptions={viewOptions} />
           )}
         </div>
 
@@ -308,6 +336,7 @@ export function IssueWorkspace({
         users={users}
         labels={labels}
         cycles={cycles}
+        states={states ?? []}
         defaultAssigneeId={defaultAssigneeId}
         defaultCycleId={cycleId}
       />
@@ -319,7 +348,8 @@ export function IssueWorkspace({
         users={users}
         labels={labels}
         cycles={cycles}
+        states={states ?? []}
       />
-    </>
+    </WorkflowStatesProvider>
   );
 }

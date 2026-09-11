@@ -70,11 +70,14 @@ export interface IssueCardProps {
   issue: BoardIssue;
   onOpen?: (issue: BoardIssue) => void;
   viewOptions: IssueViewOptions;
+  /** Etikete göre gruplandığında sürükle-bırak anlamlı olmadığı için kapalı. */
+  draggable?: boolean;
 }
 
-export function IssueCard({ issue, onOpen, viewOptions }: IssueCardProps) {
+export function IssueCard({ issue, onOpen, viewOptions, draggable = true }: IssueCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: issue.id,
+    disabled: !draggable,
   });
 
   const style = transform
@@ -106,7 +109,8 @@ export function IssueCard({ issue, onOpen, viewOptions }: IssueCardProps) {
         issue={issue}
         viewOptions={viewOptions}
         className={cn(
-          "cursor-grab hover:border-border-strong active:cursor-grabbing",
+          "hover:border-border-strong",
+          draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
           isDragging && "opacity-40",
         )}
       />

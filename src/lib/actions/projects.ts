@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client";
+import { seedProjectStates } from "@/lib/db/schema";
 import type { ActionResult } from "@/lib/actions/issues";
 import type { LabelColor } from "@/lib/actions/labels";
 import type { Project } from "@/lib/data/projects";
@@ -29,9 +30,20 @@ export async function createProject(
 
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
-  db.prepare(
-    "INSERT INTO projects (id, name, prefix, color, created_at) VALUES (?, ?, ?, ?, ?)",
-  ).run(id, name, prefix, input.color, createdAt);
+
+  // Durumlar proje başına; yeni proje varsayılan beş sütunla açılmalı yoksa
+  // panosu boş kalır ve issue oluşturulamaz.
+  db.exec("BEGIN");
+  try {
+    db.prepare(
+      "INSERT INTO projects (id, name, prefix, color, created_at) VALUES (?, ?, ?, ?, ?)",
+    ).run(id, name, prefix, input.color, createdAt);
+    seedProjectStates(db, id);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 
   revalidatePath("/projects");
   return {

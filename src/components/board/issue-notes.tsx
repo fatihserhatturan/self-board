@@ -45,7 +45,7 @@ export function IssueNotes({ issueId }: IssueNotesProps) {
     };
   }, [issueId]);
 
-  const formatter = useDateFormatter({ dateStyle: "medium", timeStyle: "short" });
+  const { formatDateTime } = useDateFormatter();
 
   async function handleAdd() {
     if (isRichTextEmpty(draft)) return;
@@ -94,7 +94,7 @@ export function IssueNotes({ issueId }: IssueNotesProps) {
                 <div className="min-w-0 flex-1">
                   <RichTextEditor content={note.body} editable={false} />
                   <span className="text-mini text-text-tertiary">
-                    {formatter.format(new Date(note.createdAt))}
+                    {formatDateTime(new Date(note.createdAt))}
                   </span>
                 </div>
                 <Button

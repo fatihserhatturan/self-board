@@ -15,6 +15,8 @@ export interface AppShellContextValue {
   setCreateIssueOpen: (open: boolean) => void;
   issues: BoardIssue[];
   projects: Project[];
+  /** Yeni issue dialog'u "bana ata" tercihini burada çözüyor. */
+  currentUserId: string | null;
   activeProjectId: string | null;
   setActiveProjectId: (id: string) => void;
 }
@@ -33,10 +35,12 @@ export function AppShellProvider({
   children,
   issues,
   projects,
+  currentUserId,
 }: {
   children: ReactNode;
   issues: BoardIssue[];
   projects: Project[];
+  currentUserId: string | null;
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorageState(
     "self-board:sidebar-collapsed",
@@ -96,6 +100,7 @@ export function AppShellProvider({
         setCreateIssueOpen,
         issues,
         projects,
+        currentUserId,
         activeProjectId,
         setActiveProjectId: setStoredProjectId,
       }}

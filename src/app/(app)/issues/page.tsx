@@ -3,6 +3,7 @@ import { getIssues, getLabels, getUsers } from "@/lib/data/issues";
 import { getView } from "@/lib/data/views";
 import { getProjects, resolveActiveProject } from "@/lib/data/projects";
 import { getCycles, getCycleSnapshots } from "@/lib/data/cycles";
+import { getWorkflowStates } from "@/lib/data/workflow-states";
 import { cycleLabel } from "@/lib/board/cycle-label";
 import { IssueWorkspace } from "@/components/board/issue-workspace";
 
@@ -23,12 +24,13 @@ export default async function IssuesPage({
     redirect(`/issues?project=${project.id}`);
   }
 
-  const [issues, users, labels, savedView, cycles] = await Promise.all([
+  const [issues, users, labels, savedView, cycles, states] = await Promise.all([
     getIssues(project.id, cycleId),
     getUsers(),
     getLabels(),
     viewId ? getView(viewId) : Promise.resolve(null),
     getCycles(project.id),
+    getWorkflowStates(project.id),
   ]);
 
   const activeCycle = cycleId ? cycles.find((cycle) => cycle.id === cycleId) : undefined;
@@ -49,6 +51,7 @@ export default async function IssuesPage({
       labels={labels}
       cycles={cycles}
       cycleSnapshots={cycleSnapshots}
+      states={states}
       initialView={savedView ?? undefined}
     />
   );

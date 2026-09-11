@@ -14,9 +14,10 @@ import { PriorityIcon } from "@/components/ui/priority-icon";
 import { StatusIcon } from "@/components/ui/status-icon";
 import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
-import { updateIssuePriority, updateIssueStatus } from "@/lib/actions/issues";
+import { updateIssuePriority, updateIssueState } from "@/lib/actions/issues";
 import type { BoardIssue } from "@/lib/data/issues";
-import { priorityLevels, statusStates } from "@/lib/token-manifest";
+import { priorityLevels } from "@/lib/token-manifest";
+import { useWorkflowStates } from "@/components/board/workflow-states-provider";
 
 export interface IssueContextMenuProps {
   issue: BoardIssue;
@@ -30,6 +31,8 @@ export interface IssueContextMenuProps {
  * indiriyor.
  */
 export function IssueContextMenu({ issue, children }: IssueContextMenuProps) {
+  // Projeler-arası görünümlerde boş gelir; menünün durum bölümü o zaman gizlenir.
+  const states = useWorkflowStates();
   const { t } = useLocale();
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -47,18 +50,18 @@ export function IssueContextMenu({ issue, children }: IssueContextMenuProps) {
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="min-w-48">
-        {statusStates.map((status) => (
+        {states.map((state) => (
           <ContextMenuItem
-            key={status}
-            onSelect={() => void apply(() => updateIssueStatus(issue.id, status))}
+            key={state.id}
+            onSelect={() => void apply(() => updateIssueState(issue.id, state.id))}
           >
-            <StatusIcon state={status} size="sm" />
-            <span className="flex-1">{t(`board.status.${status}`)}</span>
-            {issue.status === status && <Check className="size-3.5 text-text-tertiary" />}
+            <StatusIcon state={state} size="sm" />
+            <span className="flex-1">{state.name}</span>
+            {issue.state.id === state.id && <Check className="size-3.5 text-text-tertiary" />}
           </ContextMenuItem>
         ))}
 
-        <ContextMenuSeparator />
+        {states.length > 0 && <ContextMenuSeparator />}
 
         {priorityLevels.map((priority) => (
           <ContextMenuItem

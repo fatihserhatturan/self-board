@@ -5,10 +5,33 @@ import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
+import {
+  SettingsPage,
+  SettingsRow,
+  SettingsSection,
+} from "@/components/settings/settings-primitives";
 import { exportWorkspace } from "@/lib/actions/backup";
 import { todayIsoDate } from "@/lib/board/cycle-status";
+import type { WorkspaceStats } from "@/lib/data/stats";
 
-export function DataSettings() {
+export interface DataSettingsProps {
+  stats: WorkspaceStats;
+}
+
+/** Bayt değerini okunur birime çevirir. */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let value = bytes / 1024;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+export function DataSettings({ stats }: DataSettingsProps) {
   const { t } = useLocale();
   const [exporting, setExporting] = useState(false);
 
@@ -32,14 +55,46 @@ export function DataSettings() {
     setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
+  const rows: { label: string; value: string }[] = [
+    { label: t("settings.data.stats.projects"), value: String(stats.projects) },
+    { label: t("settings.data.stats.issues"), value: String(stats.issues) },
+    { label: t("settings.data.stats.notes"), value: String(stats.notes) },
+    { label: t("settings.data.stats.attachments"), value: String(stats.attachments) },
+    {
+      label: t("settings.data.stats.attachmentSize"),
+      value: formatBytes(stats.attachmentBytes),
+    },
+  ];
+
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-large font-medium text-text-primary">{t("settings.data.title")}</h2>
-      <p className="max-w-xl text-small text-text-secondary">{t("settings.data.exportHint")}</p>
-      <Button className="self-start" onClick={handleExport} loading={exporting}>
-        <Download className="size-3.5" />
-        {t("settings.data.export")}
-      </Button>
-    </section>
+    <SettingsPage title={t("settings.data.title")} description={t("settings.data.description")}>
+      <SettingsSection title={t("settings.data.stats.title")}>
+        {rows.map((row) => (
+          <SettingsRow
+            key={row.label}
+            label={row.label}
+            control={
+              <span className="block text-right text-small text-text-primary [font-variant-numeric:tabular-nums]">
+                {row.value}
+              </span>
+            }
+          />
+        ))}
+      </SettingsSection>
+
+      <SettingsSection title={t("settings.data.export")}>
+        <SettingsRow
+          label={t("settings.data.export")}
+          description={t("settings.data.exportHint")}
+          stacked
+          control={
+            <Button className="self-start" onClick={handleExport} loading={exporting}>
+              <Download className="size-3.5" />
+              {t("settings.data.export")}
+            </Button>
+          }
+        />
+      </SettingsSection>
+    </SettingsPage>
   );
 }

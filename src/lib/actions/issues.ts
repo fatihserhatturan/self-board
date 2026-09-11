@@ -3,14 +3,13 @@
 import { revalidatePath } from "next/cache";
 import type { DatabaseSync } from "node:sqlite";
 import type { PriorityLevel } from "@/components/ui/priority-icon";
-import type { StatusState } from "@/components/ui/status-icon";
 import { getDb } from "@/lib/db/client";
 import { linkAttachmentsToIssue, syncIssueAttachments } from "@/lib/db/attachment-links";
 
 export interface IssueFormValues {
   title: string;
   description: string;
-  status: StatusState;
+  stateId: string;
   priority: PriorityLevel;
   assigneeId: string | null;
   cycleId: string | null;
@@ -66,7 +65,7 @@ export async function createIssue(
     id = getNextIssueId(db, projectId, project.prefix);
 
     db.prepare(
-      `INSERT INTO issues (id, project_id, cycle_id, title, description, status, priority, assignee_id, created_at)
+      `INSERT INTO issues (id, project_id, cycle_id, title, description, state_id, priority, assignee_id, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
@@ -74,7 +73,7 @@ export async function createIssue(
       input.cycleId,
       title,
       input.description.trim() || null,
-      input.status,
+      input.stateId,
       input.priority,
       input.assigneeId,
       createdAt,
@@ -96,12 +95,40 @@ export async function createIssue(
   return { ok: true, data: { id } };
 }
 
-export async function updateIssueStatus(
+export async function updateIssueState(
   issueId: string,
-  status: StatusState,
+  stateId: string,
 ): Promise<ActionResult<{ id: string }>> {
   const db = getDb();
-  const result = db.prepare("UPDATE issues SET status = ? WHERE id = ?").run(status, issueId);
+  const result = db.prepare("UPDATE issues SET state_id = ? WHERE id = ?").run(stateId, issueId);
+
+  if (Number(result.changes) === 0) return { ok: false, error: "issue-not-found" };
+
+  revalidateIssueViews();
+  return { ok: true, data: { id: issueId } };
+}
+
+/** Panoda atanana göre gruplandığında sürükle-bırak bunu çağırıyor. */
+export async function updateIssueAssignee(
+  issueId: string,
+  assigneeId: string | null,
+): Promise<ActionResult<{ id: string }>> {
+  const db = getDb();
+  const result = db.prepare("UPDATE issues SET assignee_id = ? WHERE id = ?").run(assigneeId, issueId);
+
+  if (Number(result.changes) === 0) return { ok: false, error: "issue-not-found" };
+
+  revalidateIssueViews();
+  return { ok: true, data: { id: issueId } };
+}
+
+/** Panoda cycle'a göre gruplandığında sürükle-bırak bunu çağırıyor. */
+export async function updateIssueCycle(
+  issueId: string,
+  cycleId: string | null,
+): Promise<ActionResult<{ id: string }>> {
+  const db = getDb();
+  const result = db.prepare("UPDATE issues SET cycle_id = ? WHERE id = ?").run(cycleId, issueId);
 
   if (Number(result.changes) === 0) return { ok: false, error: "issue-not-found" };
 
@@ -140,12 +167,12 @@ export async function updateIssue(
   try {
     const result = db
       .prepare(
-        `UPDATE issues SET title = ?, description = ?, status = ?, priority = ?, assignee_id = ?, cycle_id = ? WHERE id = ?`,
+        `UPDATE issues SET title = ?, description = ?, state_id = ?, priority = ?, assignee_id = ?, cycle_id = ? WHERE id = ?`,
       )
       .run(
         title,
         description,
-        input.status,
+        input.stateId,
         input.priority,
         input.assigneeId,
         input.cycleId,

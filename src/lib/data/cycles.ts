@@ -3,11 +3,12 @@ import { getDb } from "@/lib/db/client";
 import { asString } from "@/lib/db/row-values";
 import { isoDateFromDate, todayIsoDate } from "@/lib/board/cycle-status";
 
+/** Sayımlar kullanıcı durumlarına değil beş sabit sistem tipine göre — kullanıcı istediği kadar durum tanımlasa da bu şekil sabit kalıyor. */
 export interface CycleStatusCounts {
   backlog: number;
-  todo: number;
-  inProgress: number;
-  done: number;
+  unstarted: number;
+  started: number;
+  completed: number;
   canceled: number;
 }
 
@@ -57,9 +58,11 @@ function recordCycleSnapshot(db: DatabaseSync, cycleId: string, date: string): v
     .prepare(
       `SELECT
          COUNT(*) AS scope,
-         SUM(CASE WHEN status = 'in-progress' THEN 1 ELSE 0 END) AS started,
-         SUM(CASE WHEN status IN ('done','canceled') THEN 1 ELSE 0 END) AS completed
-       FROM issues WHERE cycle_id = ?`,
+         SUM(CASE WHEN s.type = 'started' THEN 1 ELSE 0 END) AS started,
+         SUM(CASE WHEN s.type IN ('completed','canceled') THEN 1 ELSE 0 END) AS completed
+       FROM issues i
+       JOIN workflow_states s ON s.id = i.state_id
+       WHERE i.cycle_id = ?`,
     )
     .get(cycleId) as { scope: number; started: number | null; completed: number | null };
 
@@ -120,7 +123,9 @@ function ensureCyclesReady(db: DatabaseSync, projectId: string, durationDays: nu
     recordCycleSnapshot(db, cycle.id, cycle.ends_at);
 
     db.prepare(
-      "UPDATE issues SET cycle_id = ? WHERE cycle_id = ? AND status NOT IN ('done','canceled')",
+      `UPDATE issues SET cycle_id = ? WHERE cycle_id = ? AND state_id IN (
+         SELECT id FROM workflow_states WHERE type NOT IN ('completed','canceled')
+       )`,
     ).run(next.id, cycle.id);
   }
 
@@ -161,14 +166,15 @@ export async function getCycles(projectId: string): Promise<Cycle[]> {
       `SELECT
          c.id, c.project_id, c.number, c.name, c.starts_at, c.ends_at, c.created_at,
          COUNT(i.id) AS total_issues,
-         SUM(CASE WHEN i.status IN ('done','canceled') THEN 1 ELSE 0 END) AS completed_issues,
-         SUM(CASE WHEN i.status = 'backlog' THEN 1 ELSE 0 END) AS backlog,
-         SUM(CASE WHEN i.status = 'todo' THEN 1 ELSE 0 END) AS todo,
-         SUM(CASE WHEN i.status = 'in-progress' THEN 1 ELSE 0 END) AS in_progress,
-         SUM(CASE WHEN i.status = 'done' THEN 1 ELSE 0 END) AS done,
-         SUM(CASE WHEN i.status = 'canceled' THEN 1 ELSE 0 END) AS canceled
+         SUM(CASE WHEN s.type IN ('completed','canceled') THEN 1 ELSE 0 END) AS completed_issues,
+         SUM(CASE WHEN s.type = 'backlog' THEN 1 ELSE 0 END) AS backlog,
+         SUM(CASE WHEN s.type = 'unstarted' THEN 1 ELSE 0 END) AS unstarted,
+         SUM(CASE WHEN s.type = 'started' THEN 1 ELSE 0 END) AS started,
+         SUM(CASE WHEN s.type = 'completed' THEN 1 ELSE 0 END) AS completed,
+         SUM(CASE WHEN s.type = 'canceled' THEN 1 ELSE 0 END) AS canceled
        FROM cycles c
        LEFT JOIN issues i ON i.cycle_id = c.id
+       LEFT JOIN workflow_states s ON s.id = i.state_id
        WHERE c.project_id = ?
        GROUP BY c.id
        ORDER BY c.number DESC`,
@@ -188,9 +194,9 @@ export async function getCycles(projectId: string): Promise<Cycle[]> {
       completedIssues: Number(r.completed_issues ?? 0),
       counts: {
         backlog: Number(r.backlog ?? 0),
-        todo: Number(r.todo ?? 0),
-        inProgress: Number(r.in_progress ?? 0),
-        done: Number(r.done ?? 0),
+        unstarted: Number(r.unstarted ?? 0),
+        started: Number(r.started ?? 0),
+        completed: Number(r.completed ?? 0),
         canceled: Number(r.canceled ?? 0),
       },
       createdAt: asString(r.created_at),

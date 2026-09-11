@@ -16,10 +16,14 @@ describe("countActiveFilters", () => {
     );
   });
 
+  it("durum filtresini sayar", () => {
+    assert.equal(countActiveFilters({ ...EMPTY_FILTER_CRITERIA, stateIds: ["s1"] }), 1);
+  });
+
   it("tüm kriter gruplarını toplar", () => {
     assert.equal(
       countActiveFilters({
-        statuses: ["todo"],
+        stateIds: ["s1"],
         priorities: ["high", "urgent"],
         assigneeIds: ["u1"],
         labelIds: ["l1", "l2"],

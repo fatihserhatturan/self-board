@@ -29,7 +29,7 @@ export function CycleSummaryPanel({ cycle, snapshots, todayIso, className }: Cyc
 
   const tiles = [
     { label: t("cycles.stats.scope"), value: cycle.totalIssues },
-    { label: t("cycles.stats.started"), value: cycle.counts.inProgress },
+    { label: t("cycles.stats.started"), value: cycle.counts.started },
     { label: t("cycles.stats.completed"), value: cycle.completedIssues },
     { label: t("cycles.stats.remaining"), value: cycle.totalIssues - cycle.completedIssues },
     ...(status === "active"

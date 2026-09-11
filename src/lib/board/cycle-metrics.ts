@@ -26,9 +26,10 @@ function isWorkingDay(iso: string): boolean {
  * başlatılmış (in-progress) issue'lar %25 sayılır.
  */
 export function successPercent(counts: CycleStatusCounts): number {
-  const total = counts.backlog + counts.todo + counts.inProgress + counts.done + counts.canceled;
+  const total =
+    counts.backlog + counts.unstarted + counts.started + counts.completed + counts.canceled;
   if (total === 0) return 0;
-  const weighted = counts.done + counts.canceled + counts.inProgress * 0.25;
+  const weighted = counts.completed + counts.canceled + counts.started * 0.25;
   return Math.round((weighted / total) * 100);
 }
 

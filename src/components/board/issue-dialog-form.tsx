@@ -17,7 +17,9 @@ import type { IssueFormValues } from "@/lib/actions/issues";
 import type { IssueLabel, Person } from "@/lib/data/issues";
 import type { Cycle } from "@/lib/data/cycles";
 import { cycleLabel } from "@/lib/board/cycle-label";
-import { priorityLevels, statusStates } from "@/lib/token-manifest";
+import { priorityLevels } from "@/lib/token-manifest";
+import type { WorkflowState } from "@/lib/board/workflow-config";
+import { StatusIcon } from "@/components/ui/status-icon";
 
 const UNASSIGNED = "unassigned";
 const NO_CYCLE = "no-cycle";
@@ -28,6 +30,7 @@ export interface IssueDialogFormProps {
   users: Person[];
   labels: IssueLabel[];
   cycles: Cycle[];
+  states: WorkflowState[];
   titleError?: string;
 }
 
@@ -37,6 +40,7 @@ export function IssueDialogForm({
   users,
   labels,
   cycles,
+  states,
   titleError,
 }: IssueDialogFormProps) {
   const { t } = useLocale();
@@ -83,14 +87,17 @@ export function IssueDialogForm({
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
           <Label>{t("issueForm.status.label")}</Label>
-          <Select value={values.status} onValueChange={(v) => update("status", v as IssueFormValues["status"])}>
+          <Select value={values.stateId} onValueChange={(v) => update("stateId", v)}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {statusStates.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {t(`board.status.${status}`)}
+              {states.map((state) => (
+                <SelectItem key={state.id} value={state.id}>
+                  <span className="flex items-center gap-2">
+                    <StatusIcon state={state} size="sm" />
+                    {state.name}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>

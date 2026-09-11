@@ -148,13 +148,3 @@ export const priorityLabels: Record<(typeof priorityLevels)[number], string> = {
   medium: "Medium",
   low: "Low",
 };
-
-export const statusStates = ["backlog", "todo", "in-progress", "done", "canceled"] as const;
-
-export const statusLabels: Record<(typeof statusStates)[number], string> = {
-  backlog: "Backlog",
-  todo: "Todo",
-  "in-progress": "In Progress",
-  done: "Done",
-  canceled: "Canceled",
-};
