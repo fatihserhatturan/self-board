@@ -63,9 +63,8 @@ Birkaç bilinçli karar:
 - **Cycle'lar cron olmadan üretiliyor.** `getCycles()` istek anında bitmiş cycle'ları
   yakalar, tamamlanmamış issue'ları devreder ve günlük snapshot yazar. Yani bir okuma
   yolu yazma yapar; ayrıntılı gerekçe `src/lib/data/cycles.ts` içinde.
-- **`/design-system`** tasarım sistemi kataloğudur ve yalnızca geliştirme derlemesinde
-  açıktır. Uygulamada henüz kullanılmayan bazı bileşenler (hover card, date picker,
-  toggle group, alert, progress) burada yaşar ve bilerek tutulur.
+- **`src/components/ui/` yalnızca kullanılan bileşenleri içerir.** Ayrı bir tasarım
+  sistemi kataloğu yok; bir bileşen uygulamada bir yerde kullanılmıyorsa silinir.
 - **Tasarım token'ları** `src/styles/tokens.css` içinde. Koyu tema değerleri Linear'ın
   Figma topluluk dosyasından alınmış; açık tema türetilmiştir.
 
