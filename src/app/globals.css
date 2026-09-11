@@ -63,14 +63,15 @@
   --text-issue-title: 22px;
   --text-issue-title--line-height: 26.4px;
 
-  --shadow-dropdown: 0 7px 32px 0 #00000059;
-  --shadow-button: 0 1px 2px 0 #00000017;
-  --shadow-command-bar: 0 16px 70px 0 #00000080;
-  --shadow-dropdown-2: 0 4px 24px 0 #00000033;
-  --shadow-button-2: 0 1px 1px 0 #00000026;
-  --shadow-tooltip: 0 2px 4px 0 #0000001a;
-  --shadow-button-destructive: 0 0 12px -1px #eb5757ff;
-  --shadow-dropdown-blur: 0 4px 24px 0 #00000033;
+  /* Renkler gibi tema başına `tokens.css` içinde tanımlı. */
+  --shadow-dropdown: var(--shadow-dropdown);
+  --shadow-button: var(--shadow-button);
+  --shadow-command-bar: var(--shadow-command-bar);
+  --shadow-dropdown-2: var(--shadow-dropdown-2);
+  --shadow-button-2: var(--shadow-button-2);
+  --shadow-tooltip: var(--shadow-tooltip);
+  --shadow-button-destructive: var(--shadow-button-destructive);
+  --shadow-dropdown-blur: var(--shadow-dropdown-blur);
 }
 
 @layer base {

@@ -105,6 +105,18 @@
 
   --color-bg-command-bar: #1d1e2b80; /* ui.background-command-bar */
 
+  /* Gölgeler: koyu zeminde bir yüzeyi ayırmak için yoğun siyah alfa gerekiyor.
+     Beyaz zeminde aynı değerler ağır durduğu için açık temada daha hafif,
+     nötr lacivert tabanlı karşılıkları tanımlı (bkz. [data-theme="light"]). */
+  --shadow-dropdown: 0 7px 32px 0 #00000059;
+  --shadow-button: 0 1px 2px 0 #00000017;
+  --shadow-command-bar: 0 16px 70px 0 #00000080;
+  --shadow-dropdown-2: 0 4px 24px 0 #00000033;
+  --shadow-button-2: 0 1px 1px 0 #00000026;
+  --shadow-tooltip: 0 2px 4px 0 #0000001a;
+  --shadow-button-destructive: 0 0 12px -1px #eb5757ff;
+  --shadow-dropdown-blur: 0 4px 24px 0 #00000033;
+
   /* reserved for the future issues-board phase — kept for traceability,
      not wired into @theme yet:
      ui.button-issues #59597440, ui.button-issues-hover #686b863d,
@@ -132,16 +144,52 @@
   --color-text-disabled: var(--grey-b0b5c0);
   --color-text-on-accent: var(--grey-ffffff);
 
-  /* accent and label/decoration colors intentionally unchanged —
-     Linear keeps brand + label colors constant across themes.
+  /* accent (#5e6ad2) beyaz zeminde 4.70:1 — olduğu gibi kalıyor.
      `--color-accent-subtle-bg` bir istisna: dark temadaki değeri koyu lacivert
      bir yüzey, beyaz zeminde üzerindeki accent metni okunmuyordu (Toggle'ın
      açık durumu). Açık temada accent'in düşük opaklıklı hâli kullanılıyor. */
   --color-accent-subtle-bg: #5e6ad21f;
 
+  /*
+   * Etiket/decoration paleti koyu zemin için kalibre edilmiş: dokuz rengin
+   * dokuzu da koyu temada 4.59–11.03 bandında, beyaz zeminde ise 1.59–3.81
+   * bandında — yani hepsi eşiğin altında (sarı pratikte hiç okunmuyor).
+   * Rozet yazısı, avatar baş harfi, durum ve öncelik ikonları bu tokenleri
+   * doğrudan metin/ikon rengi olarak kullandığı için açık temada ton kimliği
+   * korunarak ≥4.6:1'e koyulaştırılıyor. Koyu tema değerlerine dokunulmuyor.
+   * Grafik serileri ayrı bir palet kullanıyor (`lib/board/chart-tokens.ts`) ve
+   * iki zeminde de doğrulanmış durumda — buradan etkilenmiyor.
+   */
+  --color-label-teal: #00808a; /* 4.71 */
+  --color-label-red: #e42020; /* 4.64 */
+  --color-label-mustard: #877400; /* 4.64 */
+  --color-label-yellow: #91700b; /* 4.64 */
+  --color-label-orange: #b55c0d; /* 4.67 */
+  --color-label-purple: #8e38fa; /* 5.13 */
+  --color-label-blue: #0473dd; /* 4.67 */
+  --color-label-grey: #65768d; /* 4.64 */
+  --color-label-green: #35835c; /* 4.61 */
+
+  /* Aynı gerekçe: #eb5757 beyaz zeminde 3.48:1. */
+  --color-destructive: #e42020; /* 4.64 */
+  --color-destructive-hover: #c41a1a; /* 5.98 */
+
   --color-checkbox-border: #4d4f6960;
   --color-icon-default: #4d4f6990;
 
-  --gradient-scrim: linear-gradient(135deg, #ffffff00 0%, #ffffffbd 100%);
+  /* Açık temada örtü beyaz bir yıkamaydı: beyaz sayfa üzerinde hiçbir karartma
+     yapmıyordu, dialog arkasındaki içerik tamamen canlı kalıyordu. Koyu
+     temadaki yapının nötr karşılığı. */
+  --gradient-scrim: linear-gradient(135deg, #15162114 0%, #15162159 100%);
   --color-bg-command-bar: #ffffffcc;
+
+  /* Saf siyah yerine nötr lacivert, ve belirgin biçimde daha düşük alfa. */
+  --shadow-dropdown: 0 7px 32px 0 #15162124;
+  --shadow-button: 0 1px 2px 0 #1516210f;
+  --shadow-command-bar: 0 16px 70px 0 #15162133;
+  --shadow-dropdown-2: 0 4px 24px 0 #1516211f;
+  --shadow-button-2: 0 1px 1px 0 #15162114;
+  --shadow-tooltip: 0 2px 4px 0 #15162114;
+  --shadow-button-destructive: 0 0 12px -1px #e42020cc;
+  --shadow-dropdown-blur: 0 4px 24px 0 #1516211f;
 }

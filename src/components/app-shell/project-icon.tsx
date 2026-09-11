@@ -1,5 +1,5 @@
 import type { Project } from "@/lib/data/projects";
-import { COLOR_DOT_CLASS } from "@/lib/board/color-tokens";
+import { COLOR_TINT_CLASS } from "@/lib/board/color-tokens";
 import { cn } from "@/lib/utils";
 
 export interface ProjectIconProps {
@@ -22,8 +22,8 @@ export function ProjectIcon({ project, className }: ProjectIconProps) {
   return (
     <span
       className={cn(
-        "flex shrink-0 items-center justify-center rounded font-medium text-text-on-accent",
-        COLOR_DOT_CLASS[project.color],
+        "flex shrink-0 items-center justify-center rounded font-medium",
+        COLOR_TINT_CLASS[project.color],
         className,
       )}
     >
