@@ -13,7 +13,7 @@ import {
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
-import { Kbd } from "@/components/ui/kbd";
+import { Kbd, ModKey } from "@/components/ui/kbd";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ProjectSwitcher } from "@/components/app-shell/project-switcher";
@@ -41,7 +41,12 @@ export function Sidebar({ currentUser }: SidebarProps) {
         sidebarCollapsed ? "w-0" : "w-64",
       )}
     >
-      <div className={cn("flex h-full w-64 flex-col", sidebarCollapsed && "opacity-0")}>
+      {/* Kapalıyken yalnızca `w-0` ile gizlemek yetmiyordu: içerideki linkler ve
+          butonlar tab sırasında kalıyordu. */}
+      <div
+        inert={sidebarCollapsed}
+        className={cn("flex h-full w-64 flex-col", sidebarCollapsed && "opacity-0")}
+      >
         <div className="flex flex-col gap-1 p-2">
           <WorkspaceSwitcher workspaceName={WORKSPACE.name} />
           <ProjectSwitcher />
@@ -54,7 +59,7 @@ export function Sidebar({ currentUser }: SidebarProps) {
             <Search className="size-3.5" />
             <span className="flex-1 text-left">{t("sidebar.search.placeholder")}</span>
             <span className="flex items-center gap-0.5">
-              <Kbd>⌘</Kbd>
+              <ModKey />
               <Kbd>K</Kbd>
             </span>
           </Button>

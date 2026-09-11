@@ -1,13 +1,11 @@
 "use server";
 
 import { getDb } from "@/lib/db/client";
+import { asString } from "@/lib/db/row-values";
 import { linkAttachmentsToIssue } from "@/lib/db/attachment-links";
 import type { IssueNote } from "@/lib/data/issue-notes";
 import type { ActionResult } from "@/lib/actions/issues";
 
-function asString(value: unknown): string {
-  return String(value);
-}
 
 export async function getIssueNotes(issueId: string): Promise<IssueNote[]> {
   const db = getDb();

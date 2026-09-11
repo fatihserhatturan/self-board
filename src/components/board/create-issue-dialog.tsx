@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -55,13 +55,26 @@ export function CreateIssueDialog({
   );
   const [titleError, setTitleError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
+  // Sunucu yeniden render'ı bitmeden dialog kapanırsa kullanıcı bir an bayat
+  // listeye bakıyor; `isPending` boyunca buton yükleniyor durumunda tutuluyor.
+  const [isPending, startTransition] = useTransition();
   const [wasOpen, setWasOpen] = useState(open);
+  const [prevDefaultCycleId, setPrevDefaultCycleId] = useState(defaultCycleId ?? null);
 
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) {
       setValues(buildDefaultValues(defaultAssigneeId, defaultCycleId));
       setTitleError(undefined);
+    }
+  }
+
+  // Global dialog cycle'ları açıldıktan sonra yüklüyor; varsayılan cycle
+  // dialog açıkken gelirse kullanıcı henüz seçim yapmamışsa uygulanır.
+  if ((defaultCycleId ?? null) !== prevDefaultCycleId) {
+    setPrevDefaultCycleId(defaultCycleId ?? null);
+    if (open && defaultCycleId && values.cycleId === null) {
+      setValues({ ...values, cycleId: defaultCycleId });
     }
   }
 
@@ -78,13 +91,25 @@ export function CreateIssueDialog({
       return;
     }
     toast.success(t("toast.issue.created"));
-    onOpenChange(false);
-    router.refresh();
+    startTransition(() => {
+      router.refresh();
+      onOpenChange(false);
+    });
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="xl" className="flex h-[85vh] flex-col overflow-hidden">
+      <DialogContent
+        size="xl"
+        className="flex h-[85vh] flex-col overflow-hidden"
+        // Cmd/Ctrl+Enter ile oluştur — editörden çıkmadan kaydedebilmek için.
+        onKeyDown={(event) => {
+          if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+            event.preventDefault();
+            void handleSubmit();
+          }
+        }}
+      >
         <DialogTitle className="shrink-0">{t("common.newIssue")}</DialogTitle>
         <ScrollArea className="mt-4 min-h-0 flex-1">
           <div className="px-3">
@@ -102,7 +127,7 @@ export function CreateIssueDialog({
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             {t("common.cancel")}
           </Button>
-          <Button onClick={handleSubmit} loading={submitting}>
+          <Button onClick={handleSubmit} loading={submitting || isPending}>
             {t("common.create")}
           </Button>
         </div>

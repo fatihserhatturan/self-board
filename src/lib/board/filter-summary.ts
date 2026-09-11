@@ -6,6 +6,7 @@ export function countActiveFilters(criteria: IssueFilterCriteria): number {
     criteria.statuses.length +
     criteria.priorities.length +
     criteria.assigneeIds.length +
-    criteria.labelIds.length
+    criteria.labelIds.length +
+    criteria.cycleIds.length
   );
 }

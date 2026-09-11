@@ -133,7 +133,11 @@
   --color-text-on-accent: var(--grey-ffffff);
 
   /* accent and label/decoration colors intentionally unchanged —
-     Linear keeps brand + label colors constant across themes */
+     Linear keeps brand + label colors constant across themes.
+     `--color-accent-subtle-bg` bir istisna: dark temadaki değeri koyu lacivert
+     bir yüzey, beyaz zeminde üzerindeki accent metni okunmuyordu (Toggle'ın
+     açık durumu). Açık temada accent'in düşük opaklıklı hâli kullanılıyor. */
+  --color-accent-subtle-bg: #5e6ad21f;
 
   --color-checkbox-border: #4d4f6960;
   --color-icon-default: #4d4f6990;

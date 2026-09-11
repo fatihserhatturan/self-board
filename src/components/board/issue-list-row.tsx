@@ -1,6 +1,7 @@
 "use client";
 
-import { Avatar } from "@/components/ui/avatar";
+import { AssigneeAvatar } from "@/components/board/assignee-avatar";
+import { IssueContextMenu } from "@/components/board/issue-context-menu";
 import { Badge } from "@/components/ui/badge";
 import { PriorityIcon } from "@/components/ui/priority-icon";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -22,9 +23,19 @@ export function IssueListRow({ issue, onOpen, viewOptions }: IssueListRowProps) 
   const overflowCount = issue.labels.length - visibleLabels.length;
 
   return (
+    <IssueContextMenu issue={issue}>
     <div
-      className="flex h-10 cursor-pointer items-center gap-3 px-4 transition-colors hover:bg-bg-muted"
+      role="button"
+      tabIndex={0}
+      aria-label={`${issue.id} ${issue.title}`}
+      className="flex h-10 cursor-pointer items-center gap-3 px-4 transition-colors hover:bg-bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
       onClick={() => onOpen?.(issue)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen?.(issue);
+        }
+      }}
     >
       {viewOptions.showPriority && (
         <Tooltip content={t(`board.priority.${issue.priority}`)}>
@@ -51,21 +62,10 @@ export function IssueListRow({ issue, onOpen, viewOptions }: IssueListRowProps) 
       )}
       {viewOptions.showAssignee && (
         <span className="flex shrink-0">
-          {issue.assignee ? (
-            <Tooltip content={issue.assignee.name}>
-              <span className="flex">
-                <Avatar name={issue.assignee.name} size="sm" />
-              </span>
-            </Tooltip>
-          ) : (
-            <Tooltip content={t("board.issueCard.unassigned.label")}>
-              <span className="flex size-6 items-center justify-center rounded-full border border-dashed border-border-default text-micro text-text-tertiary">
-                ?
-              </span>
-            </Tooltip>
-          )}
+          <AssigneeAvatar assignee={issue.assignee} />
         </span>
       )}
     </div>
+    </IssueContextMenu>
   );
 }

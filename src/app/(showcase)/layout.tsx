@@ -1,8 +1,13 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export default function ShowcaseLayout({ children }: { children: React.ReactNode }) {
+  // Tasarım sistemi kataloğu bir geliştirme aracı; paketlenmiş uygulamada
+  // gezinilebilir bir sayfa olarak durmasının bir anlamı yok.
+  if (process.env.NODE_ENV === "production") notFound();
+
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex min-h-full flex-col bg-bg-app">

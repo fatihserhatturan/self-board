@@ -1,22 +1,64 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TiptapImage from "@tiptap/extension-image";
 import TiptapLink from "@tiptap/extension-link";
-import { Image as ImageIcon, Link as LinkIcon } from "lucide-react";
+import {
+  Bold,
+  Code,
+  Heading2,
+  Image as ImageIcon,
+  Italic,
+  Link as LinkIcon,
+  List,
+  ListOrdered,
+  Quote,
+  Strikethrough,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/components/ui/toast";
+import { Toggle } from "@/components/ui/toggle";
 import { useLocale } from "@/components/locale-provider";
 import { LinkPreview } from "@/components/board/link-preview-node";
 import { uploadAttachment } from "@/lib/actions/attachments";
+import { fileToBase64 } from "@/lib/file-to-base64";
 import { cn } from "@/lib/utils";
 
 const ACCEPTED_MIME_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 const ACCEPTED_TYPES = ACCEPTED_MIME_TYPES.join(",");
 const MAX_BYTES = 5 * 1024 * 1024;
 const SOLE_URL_PATTERN = /^https?:\/\/\S+$/i;
+
+/** Araç çubuğundaki tek bir biçimlendirme düğmesi. */
+function MarkToggle({
+  label,
+  icon: Icon,
+  active,
+  onToggle,
+}: {
+  label: string;
+  icon: LucideIcon;
+  active: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Toggle
+      size="sm"
+      aria-label={label}
+      title={label}
+      pressed={active}
+      onPressedChange={onToggle}
+      className="px-1.5"
+    >
+      <Icon className="size-3.5" />
+    </Toggle>
+  );
+}
 
 export interface RichTextEditorProps {
   content: string;
@@ -40,6 +82,10 @@ export function RichTextEditor({
   const editorRef = useRef<Editor | null>(null);
   const [uploading, setUploading] = useState(false);
   const [isEmpty, setIsEmpty] = useState(!content);
+  // `window.prompt()` Electron renderer'ında desteklenmiyor (paketlenmiş
+  // uygulamada link ekleme sessizce çalışmıyordu) — yerine küçük bir popover.
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
 
   const editor = useEditor(
     {
@@ -101,6 +147,22 @@ export function RichTextEditor({
     editorRef.current = editor;
   }, [editor]);
 
+  // Tiptap v3'te `useEditor` her transaction'da yeniden render ETMİYOR; araç
+  // çubuğunun aktif durumları bu abonelik olmadan imleçle güncellenmezdi.
+  const activeMarks = useEditorState({
+    editor,
+    selector: ({ editor: instance }) => ({
+      bold: instance?.isActive("bold") ?? false,
+      italic: instance?.isActive("italic") ?? false,
+      strike: instance?.isActive("strike") ?? false,
+      code: instance?.isActive("code") ?? false,
+      heading: instance?.isActive("heading", { level: 2 }) ?? false,
+      bulletList: instance?.isActive("bulletList") ?? false,
+      orderedList: instance?.isActive("orderedList") ?? false,
+      blockquote: instance?.isActive("blockquote") ?? false,
+    }),
+  });
+
   useEffect(() => {
     if (editor && content !== lastEmittedContent.current) {
       editor.commands.setContent(content);
@@ -146,8 +208,10 @@ export function RichTextEditor({
 
   function handleInsertLink() {
     if (!editor) return;
-    const url = window.prompt(t("markdownEditor.linkPrompt"));
+    const url = linkUrl.trim();
     if (!url) return;
+    setLinkOpen(false);
+    setLinkUrl("");
 
     const { from, to } = editor.state.selection;
     if (from !== to) {
@@ -167,8 +231,61 @@ export function RichTextEditor({
 
   return (
     <div className="flex flex-col gap-1.5">
-      {editable && (
-        <div className="flex items-center gap-1">
+      {editable && editor && (
+        <div className="flex flex-wrap items-center gap-1">
+          {/* StarterKit bu işaretlemelerin hepsini destekliyordu ama arayüzde
+              yalnızca resim ve link butonu vardı — kalanı ancak klavye
+              kısayoluyla erişilebiliyordu. */}
+          <MarkToggle
+            label={t("editor.bold")}
+            icon={Bold}
+            active={activeMarks?.bold ?? false}
+            onToggle={() => editor.chain().focus().toggleBold().run()}
+          />
+          <MarkToggle
+            label={t("editor.italic")}
+            icon={Italic}
+            active={activeMarks?.italic ?? false}
+            onToggle={() => editor.chain().focus().toggleItalic().run()}
+          />
+          <MarkToggle
+            label={t("editor.strike")}
+            icon={Strikethrough}
+            active={activeMarks?.strike ?? false}
+            onToggle={() => editor.chain().focus().toggleStrike().run()}
+          />
+          <MarkToggle
+            label={t("editor.code")}
+            icon={Code}
+            active={activeMarks?.code ?? false}
+            onToggle={() => editor.chain().focus().toggleCode().run()}
+          />
+          <span className="mx-0.5 h-4 w-px bg-border-default" aria-hidden />
+          <MarkToggle
+            label={t("editor.heading")}
+            icon={Heading2}
+            active={activeMarks?.heading ?? false}
+            onToggle={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          />
+          <MarkToggle
+            label={t("editor.bulletList")}
+            icon={List}
+            active={activeMarks?.bulletList ?? false}
+            onToggle={() => editor.chain().focus().toggleBulletList().run()}
+          />
+          <MarkToggle
+            label={t("editor.orderedList")}
+            icon={ListOrdered}
+            active={activeMarks?.orderedList ?? false}
+            onToggle={() => editor.chain().focus().toggleOrderedList().run()}
+          />
+          <MarkToggle
+            label={t("editor.quote")}
+            icon={Quote}
+            active={activeMarks?.blockquote ?? false}
+            onToggle={() => editor.chain().focus().toggleBlockquote().run()}
+          />
+          <span className="mx-0.5 h-4 w-px bg-border-default" aria-hidden />
           <Button
             type="button"
             variant="ghost"
@@ -180,15 +297,52 @@ export function RichTextEditor({
           >
             <ImageIcon className="size-3.5" />
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={t("markdownEditor.insertLink")}
-            onClick={handleInsertLink}
+          <Popover
+            open={linkOpen}
+            onOpenChange={(next) => {
+              setLinkOpen(next);
+              if (!next) setLinkUrl("");
+            }}
           >
-            <LinkIcon className="size-3.5" />
-          </Button>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={t("markdownEditor.insertLink")}
+              >
+                <LinkIcon className="size-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-72">
+              <div className="flex flex-col gap-2">
+                <Input
+                  type="url"
+                  inputMode="url"
+                  placeholder={t("markdownEditor.linkPrompt")}
+                  aria-label={t("markdownEditor.linkPrompt")}
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleInsertLink();
+                    }
+                  }}
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  className="self-end"
+                  disabled={!linkUrl.trim()}
+                  onClick={handleInsertLink}
+                >
+                  {t("markdownEditor.insertLink")}
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
           <input
             ref={fileInputRef}
             type="file"
@@ -209,6 +363,17 @@ export function RichTextEditor({
           className={cn(
             "min-h-16 rounded-md text-small text-text-primary [&_.ProseMirror]:outline-none",
             "[&_p]:my-1 [&_img]:max-w-full [&_img]:max-h-80 [&_img]:rounded-md [&_a]:text-accent [&_a]:underline",
+            // Tailwind preflight liste ve başlık stillerini sıfırlıyor: madde
+            // işaretleri, numaralar ve başlık boyutları burada geri veriliyor —
+            // aksi halde bir madde listesi düz paragraf gibi görünüyordu.
+            "[&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5",
+            "[&_h1]:mb-1 [&_h1]:mt-3 [&_h1]:text-title3 [&_h1]:font-medium",
+            "[&_h2]:mb-1 [&_h2]:mt-3 [&_h2]:text-large [&_h2]:font-medium",
+            "[&_h3]:mb-1 [&_h3]:mt-2 [&_h3]:text-normal [&_h3]:font-medium",
+            "[&_blockquote]:my-1.5 [&_blockquote]:border-l-2 [&_blockquote]:border-border-strong [&_blockquote]:pl-3 [&_blockquote]:text-text-secondary",
+            "[&_code]:rounded [&_code]:bg-bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-mini",
+            "[&_pre]:my-1.5 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-bg-muted [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0",
+            "[&_hr]:my-3 [&_hr]:border-border-default",
             editable
               ? "border border-border-default bg-bg-surface px-3 py-2 focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]"
               : "px-0 py-0",
@@ -225,13 +390,4 @@ export function isRichTextEmpty(html: string): boolean {
   const hasText = html.replace(/<[^>]*>/g, "").trim().length > 0;
   if (hasText) return false;
   return !/<img[\s>]/i.test(html) && !/data-type="link-preview"/i.test(html);
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useDraggable } from "@dnd-kit/core";
-import { Avatar } from "@/components/ui/avatar";
+import { AssigneeAvatar } from "@/components/board/assignee-avatar";
+import { IssueContextMenu } from "@/components/board/issue-context-menu";
 import { Badge } from "@/components/ui/badge";
 import { PriorityIcon } from "@/components/ui/priority-icon";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -58,19 +59,7 @@ export function IssueCardContent({ issue, viewOptions, className }: IssueCardCon
 
       {viewOptions.showAssignee && (
         <div className="flex justify-end">
-          {issue.assignee ? (
-            <Tooltip content={issue.assignee.name}>
-              <span className="flex">
-                <Avatar name={issue.assignee.name} size="sm" />
-              </span>
-            </Tooltip>
-          ) : (
-            <Tooltip content={t("board.issueCard.unassigned.label")}>
-              <span className="flex size-6 items-center justify-center rounded-full border border-dashed border-border-default text-micro text-text-tertiary">
-                ?
-              </span>
-            </Tooltip>
-          )}
+          <AssigneeAvatar assignee={issue.assignee} />
         </div>
       )}
     </div>
@@ -93,13 +82,24 @@ export function IssueCard({ issue, onOpen, viewOptions }: IssueCardProps) {
     : undefined;
 
   return (
+    <IssueContextMenu issue={issue}>
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
+      aria-label={`${issue.id} ${issue.title}`}
+      className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
       onClick={() => {
         if (!isDragging) onOpen?.(issue);
+      }}
+      // dnd-kit `attributes` role/tabIndex veriyor ama yalnızca sürükleme için;
+      // kartı klavyeyle açmanın bir yolu yoktu.
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen?.(issue);
+        }
       }}
     >
       <IssueCardContent
@@ -111,5 +111,6 @@ export function IssueCard({ issue, onOpen, viewOptions }: IssueCardProps) {
         )}
       />
     </div>
+    </IssueContextMenu>
   );
 }

@@ -24,3 +24,35 @@ export function linkAttachmentsToIssue(
   const stmt = db.prepare("UPDATE attachments SET issue_id = ? WHERE id = ? AND issue_id IS NULL");
   for (const id of ids) stmt.run(issueId, id);
 }
+
+/**
+ * Bir issue kaydedilirken attachment'larını gövdelerle eşitler: yeni
+ * referanslar bağlanır, artık hiçbir gövdede geçmeyen ama bu issue'ya bağlı
+ * olan BLOB'lar silinir. Önceki temizlik yalnızca hiç bağlanmamış kayıtları
+ * kapsadığı için açıklamadan silinen bir görsel DB'de sonsuza kadar kalıyordu.
+ * Notlar da referans sayıldığı için gövdeleri buradan okunuyor.
+ */
+export function syncIssueAttachments(
+  db: DatabaseSync,
+  issueId: string,
+  description: string | null | undefined,
+): void {
+  const noteRows = db
+    .prepare("SELECT body FROM issue_notes WHERE issue_id = ?")
+    .all(issueId) as { body: string }[];
+
+  const referenced = new Set(
+    [description ?? "", ...noteRows.map((row) => row.body)].flatMap(extractAttachmentIds),
+  );
+
+  const link = db.prepare("UPDATE attachments SET issue_id = ? WHERE id = ? AND issue_id IS NULL");
+  for (const id of referenced) link.run(issueId, id);
+
+  const owned = db
+    .prepare("SELECT id FROM attachments WHERE issue_id = ?")
+    .all(issueId) as { id: string }[];
+  const remove = db.prepare("DELETE FROM attachments WHERE id = ?");
+  for (const row of owned) {
+    if (!referenced.has(row.id)) remove.run(row.id);
+  }
+}

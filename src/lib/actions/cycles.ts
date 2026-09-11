@@ -2,7 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client";
+import { getCycles } from "@/lib/data/cycles";
+import type { Cycle } from "@/lib/data/cycles";
 import type { ActionResult } from "@/lib/actions/issues";
+
+/**
+ * Bir projenin cycle'ları — `(app)` layout'u cycle çekmediği için kenar
+ * çubuğundaki global "New Issue" dialog'u açılırken bunu kendisi istiyor.
+ * `getCycles()` gibi rollover/snapshot yan etkilerini de çalıştırır.
+ */
+export async function listProjectCycles(projectId: string): Promise<Cycle[]> {
+  if (!projectId) return [];
+  return getCycles(projectId);
+}
 
 export async function renameCycle(id: string, name: string): Promise<ActionResult<{ id: string }>> {
   const trimmed = name.trim();

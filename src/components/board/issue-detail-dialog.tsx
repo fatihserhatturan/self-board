@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Divider } from "@/components/ui/divider";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -48,16 +49,37 @@ export function IssueDetailDialog({
   const [values, setValues] = useState<IssueFormValues | null>(issue ? toFormValues(issue) : null);
   const [titleError, setTitleError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // Sunucu yeniden render'ı bitene kadar buton yükleniyor durumunda kalıyor —
+  // aksi halde dialog kapanıp bir an bayat listeye dönülüyordu.
+  const [isPending, startTransition] = useTransition();
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   const [prevIssueId, setPrevIssueId] = useState(issue?.id ?? null);
 
   if ((issue?.id ?? null) !== prevIssueId) {
     setPrevIssueId(issue?.id ?? null);
-    setConfirmingDelete(false);
+    setConfirmDeleteOpen(false);
+    setConfirmDiscardOpen(false);
     if (issue) {
       setValues(toFormValues(issue));
       setTitleError(undefined);
     }
+  }
+
+  const isDirty =
+    issue != null && values != null && JSON.stringify(values) !== JSON.stringify(toFormValues(issue));
+
+  /** Escape, dış tıklama ve İptal aynı yoldan geçiyor — kaydedilmemiş düzenleme sessizce atılmasın. */
+  function requestOpenChange(next: boolean) {
+    if (next) {
+      onOpenChange(true);
+      return;
+    }
+    if (isDirty) {
+      setConfirmDiscardOpen(true);
+      return;
+    }
+    onOpenChange(false);
   }
 
   async function handleSubmit() {
@@ -74,22 +96,10 @@ export function IssueDetailDialog({
       return;
     }
     toast.success(t("toast.issue.updated"));
-    onOpenChange(false);
-    router.refresh();
-  }
-
-  useEffect(() => {
-    if (!confirmingDelete) return;
-    const timeout = setTimeout(() => setConfirmingDelete(false), 3000);
-    return () => clearTimeout(timeout);
-  }, [confirmingDelete]);
-
-  function handleDeleteClick() {
-    if (!confirmingDelete) {
-      setConfirmingDelete(true);
-      return;
-    }
-    void handleDelete();
+    startTransition(() => {
+      router.refresh();
+      onOpenChange(false);
+    });
   }
 
   async function handleDelete() {
@@ -97,21 +107,34 @@ export function IssueDetailDialog({
     setSubmitting(true);
     const result = await deleteIssue(issue.id);
     setSubmitting(false);
-    setConfirmingDelete(false);
+    setConfirmDeleteOpen(false);
     if (!result.ok) {
       toast.error(t("toast.issue.deleteError"));
       return;
     }
     toast.success(t("toast.issue.deleted"));
-    onOpenChange(false);
-    router.refresh();
+    startTransition(() => {
+      router.refresh();
+      onOpenChange(false);
+    });
   }
 
   if (!issue || !values) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="xl" className="flex h-[85vh] flex-col overflow-hidden">
+    <>
+    <Dialog open={open} onOpenChange={requestOpenChange}>
+      <DialogContent
+        size="xl"
+        className="flex h-[85vh] flex-col overflow-hidden"
+        // Cmd/Ctrl+Enter ile kaydet — dialog'un her yerinden, editör dahil.
+        onKeyDown={(event) => {
+          if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+            event.preventDefault();
+            void handleSubmit();
+          }
+        }}
+      >
         <DialogTitle className="sr-only">{t("issueDetailDialog.srTitle")}</DialogTitle>
         <span className="shrink-0 text-mini text-text-tertiary">{issue.id}</span>
         <ScrollArea className="mt-2 min-h-0 flex-1">
@@ -130,21 +153,44 @@ export function IssueDetailDialog({
         </ScrollArea>
         <div className="mt-4 flex shrink-0 items-center justify-end gap-2 border-t border-border-default pt-4">
           <Button
-            variant={confirmingDelete ? "destructive" : "secondary"}
+            variant="secondary"
             className="mr-auto"
-            onClick={handleDeleteClick}
-            loading={submitting && confirmingDelete}
+            onClick={() => setConfirmDeleteOpen(true)}
           >
-            {confirmingDelete ? t("issueDetailDialog.confirmDelete") : t("issueDetailDialog.delete")}
+            {t("issueDetailDialog.delete")}
           </Button>
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" onClick={() => requestOpenChange(false)}>
             {t("common.cancel")}
           </Button>
-          <Button onClick={handleSubmit} loading={submitting}>
+          <Button onClick={handleSubmit} loading={submitting || isPending}>
             {t("common.save")}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
+
+    <ConfirmDialog
+      open={confirmDeleteOpen}
+      onOpenChange={setConfirmDeleteOpen}
+      title={t("confirm.deleteIssue.title")}
+      description={t("confirm.deleteIssue.description")}
+      confirmLabel={t("common.delete")}
+      loading={submitting || isPending}
+      onConfirm={() => void handleDelete()}
+    />
+
+    <ConfirmDialog
+      open={confirmDiscardOpen}
+      onOpenChange={setConfirmDiscardOpen}
+      title={t("confirm.discard.title")}
+      description={t("confirm.discard.description")}
+      confirmLabel={t("common.discard")}
+      cancelLabel={t("common.keepEditing")}
+      onConfirm={() => {
+        setConfirmDiscardOpen(false);
+        onOpenChange(false);
+      }}
+    />
+    </>
   );
 }

@@ -4,69 +4,15 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ColorSelect } from "@/components/ui/color-select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { InlineRenameInput } from "@/components/ui/inline-rename-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
 import { createLabel, deleteLabel, updateLabel, type LabelColor } from "@/lib/actions/labels";
 import type { IssueLabel } from "@/lib/data/issues";
-
-const LABEL_COLORS: LabelColor[] = [
-  "teal",
-  "red",
-  "mustard",
-  "yellow",
-  "orange",
-  "purple",
-  "blue",
-  "grey",
-  "green",
-];
-
-const COLOR_DOT_CLASS: Record<LabelColor, string> = {
-  teal: "bg-label-teal",
-  red: "bg-label-red",
-  mustard: "bg-label-mustard",
-  yellow: "bg-label-yellow",
-  orange: "bg-label-orange",
-  purple: "bg-label-purple",
-  blue: "bg-label-blue",
-  grey: "bg-label-grey",
-  green: "bg-label-green",
-};
-
-function ColorSelect({
-  value,
-  onValueChange,
-}: {
-  value: LabelColor;
-  onValueChange: (color: LabelColor) => void;
-}) {
-  return (
-    <Select value={value} onValueChange={(v) => onValueChange(v as LabelColor)}>
-      <SelectTrigger className="w-32">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {LABEL_COLORS.map((color) => (
-          <SelectItem key={color} value={color}>
-            <span className="flex items-center gap-2">
-              <span className={`size-2.5 rounded-full ${COLOR_DOT_CLASS[color]}`} />
-              {color[0].toUpperCase() + color.slice(1)}
-            </span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
 
 export interface LabelSettingsProps {
   labels: IssueLabel[];
@@ -75,6 +21,7 @@ export interface LabelSettingsProps {
 export function LabelSettings({ labels: initialLabels }: LabelSettingsProps) {
   const { t } = useLocale();
   const [labels, setLabels] = useState(initialLabels);
+  const [pendingDelete, setPendingDelete] = useState<IssueLabel | null>(null);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState<LabelColor>("grey");
   const [creating, setCreating] = useState(false);
@@ -99,6 +46,7 @@ export function LabelSettings({ labels: initialLabels }: LabelSettingsProps) {
   }
 
   async function handleDelete(label: IssueLabel) {
+    setPendingDelete(null);
     const previous = labels;
     setLabels((prev) => prev.filter((l) => l.id !== label.id));
     const result = await deleteLabel(label.id);
@@ -136,21 +84,18 @@ export function LabelSettings({ labels: initialLabels }: LabelSettingsProps) {
             <Badge color={label.color} className="shrink-0">
               {label.name}
             </Badge>
-            <Input
+            <InlineRenameInput
               className="flex-1"
-              defaultValue={label.name}
-              key={`${label.id}-${label.name}`}
-              onBlur={(e) => handleRename(label, e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") e.currentTarget.blur();
-              }}
+              value={label.name}
+              ariaLabel={t("settings.labels.name.placeholder")}
+              onRename={(next) => handleRename(label, next)}
             />
             <ColorSelect value={label.color} onValueChange={(color) => handleColorChange(label, color)} />
             <Button
               variant="ghost"
               size="icon"
               aria-label={t("settings.labels.delete.label")}
-              onClick={() => handleDelete(label)}
+              onClick={() => setPendingDelete(label)}
             >
               <Trash2 className="size-3.5" />
             </Button>
@@ -174,6 +119,19 @@ export function LabelSettings({ labels: initialLabels }: LabelSettingsProps) {
           {t("settings.labels.add")}
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete != null}
+        onOpenChange={(next) => {
+          if (!next) setPendingDelete(null);
+        }}
+        title={t("confirm.deleteLabel.title")}
+        description={t("confirm.deleteLabel.description")}
+        confirmLabel={t("common.delete")}
+        onConfirm={() => {
+          if (pendingDelete) void handleDelete(pendingDelete);
+        }}
+      />
     </section>
   );
 }

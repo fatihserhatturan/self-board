@@ -1,7 +1,9 @@
+import { cache } from "react";
 import type { BadgeProps } from "@/components/ui/badge";
 import type { PriorityLevel } from "@/components/ui/priority-icon";
 import type { StatusState } from "@/components/ui/status-icon";
 import { getDb } from "@/lib/db/client";
+import { asString, asNullableString } from "@/lib/db/row-values";
 
 export interface Person {
   id: string;
@@ -49,13 +51,7 @@ interface IssueLabelRow {
   labelColor: IssueLabel["color"];
 }
 
-function asString(value: unknown): string {
-  return String(value);
-}
 
-function asNullableString(value: unknown): string | null {
-  return value === null || value === undefined ? null : String(value);
-}
 
 function toIssueRow(row: Record<string, unknown>): IssueRow {
   return {
@@ -87,8 +83,14 @@ function toIssueLabelRow(row: Record<string, unknown>): IssueLabelRow {
  * ör. My Issues) döner. SQLite'a iki sorgu atıp label'ları JS'te Map ile
  * manuel join ediyor. `async` kalıyor (DatabaseSync sync olsa da) — arayüz
  * stabil, ileride farklı bir backend'e geçilirse çağıran taraflar etkilenmez.
+ *
+ * `cache()` ile sarılı: `(app)` layout'u ve sayfanın kendisi aynı istekte aynı
+ * sorguları çalıştırıyordu, artık ikincisi ilk sonucu paylaşıyor.
  */
-export async function getIssues(projectId?: string, cycleId?: string): Promise<BoardIssue[]> {
+export const getIssues = cache(async function getIssues(
+  projectId?: string,
+  cycleId?: string,
+): Promise<BoardIssue[]> {
   const db = getDb();
 
   const conditions: string[] = [];
@@ -114,14 +116,21 @@ export async function getIssues(projectId?: string, cycleId?: string): Promise<B
   const rawIssueRows = db.prepare(issuesSql).all(...params);
   const issueRows = rawIssueRows.map(toIssueRow);
 
-  const labelRows = db
-    .prepare(
-      `SELECT il.issue_id, l.id AS label_id, l.name AS label_name, l.color AS label_color
-       FROM issue_labels il
-       JOIN labels l ON l.id = il.label_id`,
-    )
-    .all()
-    .map(toIssueLabelRow);
+  // Label satırları da aynı issue kümesiyle sınırlanıyor; önceden proje filtresi
+  // verilse bile `issue_labels` tablosunun tamamı okunuyordu.
+  const issueIds = issueRows.map((row) => row.id);
+  const labelRows =
+    issueIds.length === 0
+      ? []
+      : db
+          .prepare(
+            `SELECT il.issue_id, l.id AS label_id, l.name AS label_name, l.color AS label_color
+             FROM issue_labels il
+             JOIN labels l ON l.id = il.label_id
+             WHERE il.issue_id IN (${issueIds.map(() => "?").join(",")})`,
+          )
+          .all(...issueIds)
+          .map(toIssueLabelRow);
 
   const labelsByIssueId = new Map<string, IssueLabel[]>();
   for (const row of labelRows) {
@@ -145,30 +154,30 @@ export async function getIssues(projectId?: string, cycleId?: string): Promise<B
     labels: labelsByIssueId.get(row.id) ?? [],
     createdAt: row.createdAt,
   }));
-}
+});
 
-export async function getUsers(): Promise<Person[]> {
+export const getUsers = cache(async function getUsers(): Promise<Person[]> {
   const db = getDb();
   const rows = db.prepare("SELECT id, name, email FROM users ORDER BY name ASC").all();
   return rows.map((row) => {
     const r = row as Record<string, unknown>;
     return { id: asString(r.id), name: asString(r.name), email: asString(r.email) };
   });
-}
+});
 
-export async function getCurrentUser(): Promise<Person | null> {
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<Person | null> {
   const db = getDb();
   const row = db.prepare("SELECT id, name, email FROM users WHERE is_current = 1 LIMIT 1").get();
   if (!row) return null;
   const r = row as Record<string, unknown>;
   return { id: asString(r.id), name: asString(r.name), email: asString(r.email) };
-}
+});
 
-export async function getLabels(): Promise<IssueLabel[]> {
+export const getLabels = cache(async function getLabels(): Promise<IssueLabel[]> {
   const db = getDb();
   const rows = db.prepare("SELECT id, name, color FROM labels ORDER BY name ASC").all();
   return rows.map((row) => {
     const r = row as Record<string, unknown>;
     return { id: asString(r.id), name: asString(r.name), color: asString(r.color) as IssueLabel["color"] };
   });
-}
+});

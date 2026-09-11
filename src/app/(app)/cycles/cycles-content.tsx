@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Input } from "@/components/ui/input";
+import { InlineRenameInput } from "@/components/ui/inline-rename-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -27,6 +27,7 @@ import type { Cycle, CycleSnapshot } from "@/lib/data/cycles";
 import { averageVelocity, successPercent } from "@/lib/board/cycle-metrics";
 import { getCycleStatus, parseIsoDate, todayIsoDate, type CycleStatus } from "@/lib/board/cycle-status";
 import { cycleLabel } from "@/lib/board/cycle-label";
+import { useDateFormatter } from "@/lib/use-date-formatter";
 import { cn } from "@/lib/utils";
 
 const DURATION_WEEK_OPTIONS = [1, 2, 3, 4];
@@ -46,21 +47,14 @@ export function CyclesContent({
   cycles: initialCycles,
   snapshots,
 }: CyclesContentProps) {
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   const [cycles, setCycles] = useState(initialCycles);
   const [duration, setDuration] = useState(cycleDurationDays);
   const [savingDuration, setSavingDuration] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const today = useMemo(() => todayIsoDate(), []);
 
-  const formatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-US", {
-        day: "numeric",
-        month: "short",
-      }),
-    [locale],
-  );
+  const formatter = useDateFormatter({ day: "numeric", month: "short" });
 
   const grouped = useMemo(() => {
     const groups: Record<CycleStatus, Cycle[]> = { active: [], upcoming: [], completed: [] };
@@ -99,15 +93,12 @@ export function CyclesContent({
 
   function renderNameInput(cycle: Cycle, className?: string) {
     return (
-      <Input
+      <InlineRenameInput
         className={cn("w-44", className)}
-        defaultValue={cycle.name ?? ""}
+        value={cycle.name ?? ""}
         placeholder={cycleLabel(cycle)}
-        key={`${cycle.id}-${cycle.name}`}
-        onBlur={(e) => handleRename(cycle, e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-        }}
+        ariaLabel={cycleLabel(cycle)}
+        onRename={(next) => handleRename(cycle, next)}
       />
     );
   }

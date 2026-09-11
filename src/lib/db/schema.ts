@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS projects (
   icon_mime_type      TEXT,
   icon_data           BLOB,
   cycle_duration_days INTEGER NOT NULL DEFAULT 14,
+  issue_seq           INTEGER NOT NULL DEFAULT 0,
   created_at          TEXT NOT NULL
 );
 
@@ -111,6 +112,34 @@ export function ensureSchema(db: DatabaseSync) {
   ensureCyclesColumns(db);
   ensureCurrentUserColumn(db);
   ensureAttachmentIssueIdColumn(db);
+  ensureProjectIssueSeq(db);
+}
+
+/**
+ * `projects.issue_seq` bu sürümde eklendi. Önceden yeni issue id'si "projedeki
+ * en yüksek numara + 1" ile üretiliyordu; son issue silinince aynı id yeniden
+ * dağıtılıyor ve notlarda geçen eski referanslar başka bir issue'ya işaret
+ * ediyordu. Sayaç artık monoton — var olan DB'lerde mevcut en yüksek numaradan
+ * başlatılıyor ki geçiş anında çakışma olmasın.
+ */
+function ensureProjectIssueSeq(db: DatabaseSync) {
+  const columns = db.prepare("PRAGMA table_info(projects)").all() as { name: string }[];
+  if (columns.some((column) => column.name === "issue_seq")) return;
+
+  db.exec("ALTER TABLE projects ADD COLUMN issue_seq INTEGER NOT NULL DEFAULT 0");
+
+  const projects = db.prepare("SELECT id FROM projects").all() as { id: string }[];
+  const selectIds = db.prepare("SELECT id FROM issues WHERE project_id = ?");
+  const updateSeq = db.prepare("UPDATE projects SET issue_seq = ? WHERE id = ?");
+  for (const project of projects) {
+    const rows = selectIds.all(project.id) as { id: string }[];
+    const max = rows.reduce((highest, row) => {
+      const match = /-(\d+)$/.exec(row.id);
+      const value = match ? Number(match[1]) : 0;
+      return value > highest ? value : highest;
+    }, 0);
+    updateSeq.run(max, project.id);
+  }
 }
 
 const DEFAULT_PROJECT = {

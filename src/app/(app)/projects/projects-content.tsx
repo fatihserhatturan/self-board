@@ -1,21 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FolderKanban, Pencil, Trash2, X } from "lucide-react";
 import { TopBar } from "@/components/app-shell/top-bar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ColorSelect } from "@/components/ui/color-select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { InlineRenameInput } from "@/components/ui/inline-rename-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "@/components/ui/toast";
 import { ProjectIcon } from "@/components/app-shell/project-icon";
 import { useAppShell } from "@/components/app-shell/app-shell-provider";
@@ -29,44 +25,9 @@ import {
 } from "@/lib/actions/projects";
 import type { LabelColor } from "@/lib/actions/labels";
 import type { Project } from "@/lib/data/projects";
-import { PROJECT_COLOR_DOT_CLASS, PROJECT_COLORS } from "@/lib/board/project-colors";
+import { fileToBase64 } from "@/lib/file-to-base64";
 
 const ICON_ACCEPTED_TYPES = "image/png,image/jpeg,image/gif,image/webp";
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
-function ColorSelect({
-  value,
-  onValueChange,
-}: {
-  value: LabelColor;
-  onValueChange: (color: LabelColor) => void;
-}) {
-  return (
-    <Select value={value} onValueChange={(v) => onValueChange(v as LabelColor)}>
-      <SelectTrigger className="w-32">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {PROJECT_COLORS.map((color) => (
-          <SelectItem key={color} value={color}>
-            <span className="flex items-center gap-2">
-              <span className={`size-2.5 rounded-full ${PROJECT_COLOR_DOT_CLASS[color]}`} />
-              {color[0].toUpperCase() + color.slice(1)}
-            </span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
 
 export interface ProjectsContentProps {
   projects: Project[];
@@ -77,19 +38,15 @@ export function ProjectsContent({ projects: initialProjects }: ProjectsContentPr
   const router = useRouter();
   const { setActiveProjectId } = useAppShell();
   const [projects, setProjects] = useState(initialProjects);
-  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  // Cascade bir silme için 3 saniyelik çift tıklama yetersizdi — ne silineceğini
+  // söyleyen ortak onay dialog'una geçildi.
+  const [pendingDelete, setPendingDelete] = useState<Project | null>(null);
   const [newName, setNewName] = useState("");
   const [newPrefix, setNewPrefix] = useState("");
   const [newColor, setNewColor] = useState<LabelColor>("grey");
   const [creating, setCreating] = useState(false);
   const iconInputRef = useRef<HTMLInputElement>(null);
   const iconUploadTargetId = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!confirmingDeleteId) return;
-    const timeout = setTimeout(() => setConfirmingDeleteId(null), 3000);
-    return () => clearTimeout(timeout);
-  }, [confirmingDeleteId]);
 
   function handleSwitch(project: Project) {
     setActiveProjectId(project.id);
@@ -153,16 +110,8 @@ export function ProjectsContent({ projects: initialProjects }: ProjectsContentPr
     }
   }
 
-  function handleDeleteClick(project: Project) {
-    if (confirmingDeleteId !== project.id) {
-      setConfirmingDeleteId(project.id);
-      return;
-    }
-    void handleDelete(project);
-  }
-
   async function handleDelete(project: Project) {
-    setConfirmingDeleteId(null);
+    setPendingDelete(null);
     const previous = projects;
     setProjects((prev) => prev.filter((p) => p.id !== project.id));
     const result = await deleteProject(project.id);
@@ -253,14 +202,11 @@ export function ProjectsContent({ projects: initialProjects }: ProjectsContentPr
                 <Badge size="sm" color="grey" className="shrink-0 font-mono">
                   {project.prefix}
                 </Badge>
-                <Input
+                <InlineRenameInput
                   className="flex-1"
-                  defaultValue={project.name}
-                  key={`${project.id}-${project.name}`}
-                  onBlur={(e) => handleRename(project, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") e.currentTarget.blur();
-                  }}
+                  value={project.name}
+                  ariaLabel={t("page.projects.namePlaceholder")}
+                  onRename={(next) => handleRename(project, next)}
                 />
                 <ColorSelect
                   value={project.color}
@@ -270,10 +216,10 @@ export function ProjectsContent({ projects: initialProjects }: ProjectsContentPr
                   {t("page.projects.switchAction")}
                 </Button>
                 <Button
-                  variant={confirmingDeleteId === project.id ? "destructive" : "ghost"}
+                  variant="ghost"
                   size="icon"
                   aria-label={t("page.projects.delete.label")}
-                  onClick={() => handleDeleteClick(project)}
+                  onClick={() => setPendingDelete(project)}
                 >
                   <Trash2 className="size-3.5" />
                 </Button>
@@ -315,6 +261,19 @@ export function ProjectsContent({ projects: initialProjects }: ProjectsContentPr
           <p className="text-mini text-text-tertiary">{t("page.projects.prefixHint")}</p>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete != null}
+        onOpenChange={(next) => {
+          if (!next) setPendingDelete(null);
+        }}
+        title={t("confirm.deleteProject.title")}
+        description={t("confirm.deleteProject.description")}
+        confirmLabel={t("common.delete")}
+        onConfirm={() => {
+          if (pendingDelete) void handleDelete(pendingDelete);
+        }}
+      />
     </>
   );
 }

@@ -5,6 +5,7 @@ import { Divider } from "@/components/ui/divider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLocale } from "@/components/locale-provider";
 import { AppearanceSettings } from "@/components/settings/appearance-settings";
+import { DataSettings } from "@/components/settings/data-settings";
 import { LabelSettings } from "@/components/settings/label-settings";
 import { ProfileSettings } from "@/components/settings/profile-settings";
 import type { IssueLabel, Person } from "@/lib/data/issues";
@@ -27,6 +28,8 @@ export function SettingsContent({ labels, currentUser }: SettingsContentProps) {
           <ProfileSettings currentUser={currentUser} />
           <Divider />
           <LabelSettings labels={labels} />
+          <Divider />
+          <DataSettings />
         </div>
       </ScrollArea>
     </>

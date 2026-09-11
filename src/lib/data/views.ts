@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db/client";
+import { asString } from "@/lib/db/row-values";
 import {
   DEFAULT_VIEW_OPTIONS,
   EMPTY_FILTER_CRITERIA,
@@ -27,9 +28,6 @@ interface ViewRow {
   createdAt: string;
 }
 
-function asString(value: unknown): string {
-  return String(value);
-}
 
 function toViewRow(row: Record<string, unknown>): ViewRow {
   return {

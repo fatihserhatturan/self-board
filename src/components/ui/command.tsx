@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLocale } from "@/components/locale-provider";
 import { cn } from "@/lib/utils";
 
 export function Command({ className, ...props }: ComponentProps<typeof CommandPrimitive>) {
@@ -105,6 +106,8 @@ export function CommandDialog({
   className,
   ...props
 }: ComponentProps<typeof Dialog> & { className?: string }) {
+  const { t } = useLocale();
+
   return (
     <Dialog {...props}>
       <DialogContent
@@ -113,9 +116,9 @@ export function CommandDialog({
           className,
         )}
       >
-        <DialogTitle className="sr-only">Komut Paleti</DialogTitle>
+        <DialogTitle className="sr-only">{t("commandPalette.srTitle")}</DialogTitle>
         <DialogDescription className="sr-only">
-          Bir komut aramak için yazmaya başlayın
+          {t("commandPalette.placeholder")}
         </DialogDescription>
         <Command>{children}</Command>
       </DialogContent>

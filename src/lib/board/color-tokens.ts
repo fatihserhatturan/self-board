@@ -1,6 +1,11 @@
 import type { LabelColor } from "@/lib/actions/labels";
 
-export const PROJECT_COLORS: LabelColor[] = [
+/**
+ * Kullanıcının seçebildiği renk kümesi ve Tailwind sınıf eşlemesi. Etiketler ve
+ * projeler aynı paleti kullanıyor — daha önce ikisinde birebir aynı iki liste
+ * ayrı ayrı tanımlıydı.
+ */
+export const SELECTABLE_COLORS: LabelColor[] = [
   "teal",
   "red",
   "mustard",
@@ -12,7 +17,7 @@ export const PROJECT_COLORS: LabelColor[] = [
   "green",
 ];
 
-export const PROJECT_COLOR_DOT_CLASS: Record<LabelColor, string> = {
+export const COLOR_DOT_CLASS: Record<LabelColor, string> = {
   teal: "bg-label-teal",
   red: "bg-label-red",
   mustard: "bg-label-mustard",

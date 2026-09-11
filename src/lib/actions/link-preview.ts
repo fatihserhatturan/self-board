@@ -14,9 +14,14 @@ export interface LinkPreviewData {
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 5000;
 const MAX_HTML_BYTES = 200 * 1024;
+const MAX_REDIRECTS = 5;
 
 const PRIVATE_HOSTNAME_PATTERN =
-  /^(localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[0-1])\.|\[::1\]|::1)/i;
+  /^(localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[0-1])\.)/i;
+/** `.local`/`.internal`/`.home` gibi ağ-içi son ekler. */
+const PRIVATE_SUFFIX_PATTERN = /\.(local|internal|localdomain|home|lan)$/i;
+/** Nokta içermeyen sayısal host'lar (`2130706433`, `0x7f000001`) da 127.0.0.1'e çözülür. */
+const NUMERIC_HOST_PATTERN = /^(0x[0-9a-f]+|\d+)$/i;
 
 function isSafeUrl(raw: string): URL | null {
   let url: URL;
@@ -26,7 +31,15 @@ function isSafeUrl(raw: string): URL | null {
     return null;
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-  if (PRIVATE_HOSTNAME_PATTERN.test(url.hostname)) return null;
+
+  const hostname = url.hostname;
+  // IPv6 literalleri (`[::1]`, `[fc00::]`) link önizlemesi için pratikte hiç
+  // görülmüyor; hepsini reddetmek yerel adres varyantlarını tek adımda kapatıyor.
+  if (hostname.startsWith("[")) return null;
+  if (PRIVATE_HOSTNAME_PATTERN.test(hostname)) return null;
+  if (PRIVATE_SUFFIX_PATTERN.test(hostname)) return null;
+  if (NUMERIC_HOST_PATTERN.test(hostname)) return null;
+
   return url;
 }
 
@@ -70,11 +83,34 @@ function resolveMaybeRelative(value: string | null, baseUrl: URL): string | null
   }
 }
 
-async function fetchAndExtract(url: URL): Promise<LinkPreviewData> {
-  const response = await fetch(url.toString(), {
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; self-board link preview)" },
-  });
+/**
+ * Yönlendirmeleri elle takip eder ve HER adımı yeniden doğrular. `fetch`
+ * varsayılan olarak yönlendirmeyi kendisi izlediği için yalnızca ilk URL'i
+ * kontrol etmek yetmiyordu: herkese açık bir adres 127.0.0.1'e yönlendirip
+ * yerel ağa istek attırabilirdi.
+ */
+async function fetchFollowingSafeRedirects(url: URL): Promise<{ response: Response; finalUrl: URL }> {
+  let current = url;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const response = await fetch(current.toString(), {
+      redirect: "manual",
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; self-board link preview)" },
+    });
+
+    const location = response.status >= 300 && response.status < 400 ? response.headers.get("location") : null;
+    if (!location) return { response, finalUrl: current };
+
+    void response.body?.cancel();
+    const next = isSafeUrl(new URL(location, current).toString());
+    if (!next) throw new Error("unsafe-redirect");
+    current = next;
+  }
+  throw new Error("too-many-redirects");
+}
+
+async function fetchAndExtract(startUrl: URL): Promise<LinkPreviewData> {
+  const { response, finalUrl: url } = await fetchFollowingSafeRedirects(startUrl);
 
   const reader = response.body?.getReader();
   let html = "";
@@ -93,7 +129,10 @@ async function fetchAndExtract(url: URL): Promise<LinkPreviewData> {
   }
 
   return {
-    url: url.toString(),
+    // Önbellek anahtarı kullanıcının yapıştırdığı URL — yönlendirme sonrası
+    // adres yazılırsa aynı bağlantı bir daha önbellekten okunamazdı. Göreli
+    // adresler yine de son URL'e göre çözülüyor.
+    url: startUrl.toString(),
     title: extractMeta(html, ["og:title", "twitter:title"]) ?? extractTitleTag(html),
     description: extractMeta(html, ["og:description", "twitter:description", "description"]),
     image: resolveMaybeRelative(extractMeta(html, ["og:image", "twitter:image"]), url),

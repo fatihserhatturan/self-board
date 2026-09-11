@@ -36,6 +36,7 @@ import { countActiveFilters } from "@/lib/board/filter-summary";
 import { cycleLabel } from "@/lib/board/cycle-label";
 import { todayIsoDate } from "@/lib/board/cycle-status";
 import { useLocalStorageState } from "@/lib/use-local-storage-state";
+import { isTypingTarget } from "@/lib/keyboard";
 import { cn } from "@/lib/utils";
 
 const PRIORITY_RANK: Record<PriorityLevel, number> = {
@@ -128,6 +129,8 @@ export function IssueWorkspace({
   useEffect(() => {
     if (!panelCycle) return;
     function onKeyDown(event: KeyboardEvent) {
+      // Tiptap'te Cmd+I italic demek — metin yazarken paneli açıp kapatmamalı.
+      if (isTypingTarget(event.target)) return;
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "i") {
         event.preventDefault();
         setCyclePanelOpen(!cyclePanelOpen);
@@ -266,6 +269,16 @@ export function IssueWorkspace({
               icon={ListTodo}
               title={t("emptyState.issues.title")}
               action={{ label: t("emptyState.issues.action"), onClick: () => setCreateOpen(true) }}
+            />
+          ) : sortedIssues.length === 0 ? (
+            <EmptyState
+              icon={ListFilter}
+              title={t("emptyState.filtered.title")}
+              description={t("emptyState.filtered.description")}
+              action={{
+                label: t("emptyState.filtered.action"),
+                onClick: () => setFilterCriteria(EMPTY_FILTER_CRITERIA),
+              }}
             />
           ) : view === "board" ? (
             <Board issues={sortedIssues} onOpenIssue={openDetail} viewOptions={viewOptions} />

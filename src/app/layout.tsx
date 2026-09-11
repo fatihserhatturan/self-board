@@ -21,7 +21,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="tr" className={`${inter.variable} h-full`} suppressHydrationWarning>
       <body className="h-full flex flex-col font-sans antialiased">
         <LocaleProvider>
-          <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem={false}>
+          {/* `enableSystem`: işletim sistemi temasını izleyen üçüncü bir seçenek —
+              ayarlarda "Sistem" olarak sunuluyor. Varsayılan hâlâ koyu tema. */}
+          <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem>
             {children}
             <Toaster />
           </ThemeProvider>

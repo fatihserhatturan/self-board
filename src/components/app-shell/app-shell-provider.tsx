@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useLocalStorageState } from "@/lib/use-local-storage-state";
+import { isTypingTarget } from "@/lib/keyboard";
 import type { BoardIssue } from "@/lib/data/issues";
 import type { Project } from "@/lib/data/projects";
 
@@ -59,14 +60,30 @@ export function AppShellProvider({
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      // Metin yazarken hiçbir global kısayol tetiklenmemeli — özellikle
+      // değiştiricisiz `c`, aksi halde her "c" harfi dialog açardı.
+      if (isTypingTarget(event.target)) return;
+      const mod = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+
+      if (mod && key === "k") {
         event.preventDefault();
         setCommandOpen((open) => !open);
+        return;
+      }
+      if (mod && key === "b") {
+        event.preventDefault();
+        setSidebarCollapsed(!sidebarCollapsed);
+        return;
+      }
+      if (!mod && !event.altKey && key === "c") {
+        event.preventDefault();
+        setCreateIssueOpen(true);
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [sidebarCollapsed, setSidebarCollapsed]);
 
   return (
     <AppShellContext.Provider

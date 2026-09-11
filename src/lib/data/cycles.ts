@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "@/lib/db/client";
+import { asString } from "@/lib/db/row-values";
 import { isoDateFromDate, todayIsoDate } from "@/lib/board/cycle-status";
 
 export interface CycleStatusCounts {
@@ -145,9 +146,6 @@ function insertCycle(
   return { id, number, starts_at: startsAt, ends_at: endsAt };
 }
 
-function asString(value: unknown): string {
-  return String(value);
-}
 
 export async function getCycles(projectId: string): Promise<Cycle[]> {
   const db = getDb();

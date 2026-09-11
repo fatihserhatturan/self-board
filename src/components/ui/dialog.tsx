@@ -3,6 +3,7 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
+import { useLocale } from "@/components/locale-provider";
 import { cn } from "@/lib/utils";
 
 export const Dialog = DialogPrimitive.Root;
@@ -31,6 +32,8 @@ export interface DialogContentProps
     VariantProps<typeof dialogContentVariants> {}
 
 export function DialogContent({ className, size, children, ...props }: DialogContentProps) {
+  const { t } = useLocale();
+
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
@@ -50,7 +53,7 @@ export function DialogContent({ className, size, children, ...props }: DialogCon
         {children}
         <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md text-text-tertiary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]">
           <X className="size-4" />
-          <span className="sr-only">Kapat</span>
+          <span className="sr-only">{t("common.close")}</span>
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>

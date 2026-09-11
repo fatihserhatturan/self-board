@@ -15,7 +15,9 @@ import { useMounted } from "@/lib/use-mounted";
 
 export function AppearanceSettings() {
   const { locale, setLocale, t } = useLocale();
-  const { resolvedTheme, setTheme } = useTheme();
+  // `theme` seçilen değer ("system" dahil), `resolvedTheme` ise onun çözülmüş
+  // hâli — seçicide seçimin kendisi gösterilmeli.
+  const { theme, setTheme } = useTheme();
   const mounted = useMounted();
 
   return (
@@ -38,16 +40,14 @@ export function AppearanceSettings() {
 
         <div className="flex flex-col gap-1.5">
           <Label>{t("settings.appearance.theme.label")}</Label>
-          <Select
-            value={mounted ? (resolvedTheme ?? "dark") : "dark"}
-            onValueChange={(v) => setTheme(v)}
-          >
+          <Select value={mounted ? (theme ?? "dark") : "dark"} onValueChange={(v) => setTheme(v)}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="light">{t("settings.appearance.theme.light")}</SelectItem>
               <SelectItem value="dark">{t("settings.appearance.theme.dark")}</SelectItem>
+              <SelectItem value="system">{t("settings.appearance.theme.system")}</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -16,15 +16,18 @@ export async function updateCurrentUser(name: string, email: string): Promise<Ac
     | undefined;
   if (!current) return { ok: false, error: "no-current-user" };
 
-  try {
-    db.prepare("UPDATE users SET name = ?, email = ? WHERE id = ?").run(
-      trimmedName,
-      trimmedEmail,
-      current.id,
-    );
-  } catch {
-    return { ok: false, error: "email-taken" };
-  }
+  // `users.email` UNIQUE — çakışmayı önceden yakalayıp gerçek hatalardan ayırıyoruz;
+  // aksi halde her SQLite hatası "e-posta kullanımda" gibi raporlanıyordu.
+  const taken = db
+    .prepare("SELECT 1 FROM users WHERE email = ? AND id <> ? LIMIT 1")
+    .get(trimmedEmail, current.id);
+  if (taken) return { ok: false, error: "email-taken" };
+
+  db.prepare("UPDATE users SET name = ?, email = ? WHERE id = ?").run(
+    trimmedName,
+    trimmedEmail,
+    current.id,
+  );
 
   revalidatePath("/settings");
   return { ok: true, data: { id: current.id, name: trimmedName, email: trimmedEmail } };

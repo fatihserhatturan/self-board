@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { app, BrowserWindow, dialog, shell } from "electron";
 
@@ -7,8 +8,71 @@ const DEV_PORT = 3000;
 // "localhost" kullanılır: next dev, 127.0.0.1'i cross-origin sayıp HMR/statik chunk isteklerini engelliyor.
 const DEV_URL = `http://localhost:${DEV_PORT}`;
 
+// `tokens.css` içindeki `--color-bg-app` ile aynı: pencere boyanana kadar
+// arkada Electron'un varsayılan beyazı yerine uygulamanın zemini görünsün.
+const APP_BACKGROUND_COLOR = "#181921";
+
+const DEFAULT_BOUNDS = { width: 1280, height: 800 };
+
 let mainWindow: BrowserWindow | null = null;
 let serverProcess: ChildProcess | null = null;
+
+interface WindowBounds {
+  width: number;
+  height: number;
+  x?: number;
+  y?: number;
+  maximized?: boolean;
+}
+
+function windowStatePath(): string {
+  return path.join(app.getPath("userData"), "window-state.json");
+}
+
+/** Pencere boyutu/konumu her açılışta sıfırlanıyordu; userData altında saklanıyor. */
+function loadWindowBounds(): WindowBounds {
+  try {
+    const parsed = JSON.parse(readFileSync(windowStatePath(), "utf-8")) as WindowBounds;
+    if (typeof parsed.width !== "number" || typeof parsed.height !== "number") {
+      return DEFAULT_BOUNDS;
+    }
+    return parsed;
+  } catch {
+    return DEFAULT_BOUNDS;
+  }
+}
+
+function saveWindowBounds(): void {
+  if (!mainWindow) return;
+  const { width, height, x, y } = mainWindow.getNormalBounds();
+  const state: WindowBounds = { width, height, x, y, maximized: mainWindow.isMaximized() };
+  try {
+    writeFileSync(windowStatePath(), JSON.stringify(state), "utf-8");
+  } catch {
+    // Durum kaydedilemezse uygulama yine çalışmalı — sessizce geçiliyor.
+  }
+}
+
+/**
+ * Next standalone sunucusunu kapatır. Windows'ta `kill()` yalnızca doğrudan
+ * çocuğu hedefliyor ve sunucu arkada çalışmaya devam edebiliyordu; orada süreç
+ * ağacının tamamı `taskkill /T` ile kapatılıyor.
+ */
+function stopServerProcess(): void {
+  if (!serverProcess) return;
+  const child = serverProcess;
+  serverProcess = null;
+
+  if (process.platform === "win32" && child.pid !== undefined) {
+    try {
+      spawn("taskkill", ["/pid", String(child.pid), "/t", "/f"], { stdio: "ignore" });
+      return;
+    } catch {
+      // taskkill yoksa aşağıdaki genel yola düşülüyor.
+    }
+  }
+  child.kill();
+}
 
 async function waitForServer(url: string, timeoutMs = 30000): Promise<void> {
   const start = Date.now();
@@ -68,14 +132,17 @@ async function startProdServer(): Promise<number> {
 }
 
 async function createWindow() {
-  const port = isDev ? DEV_PORT : await startProdServer();
-  const url = isDev ? DEV_URL : `http://127.0.0.1:${port}`;
-
-  await waitForServer(url);
-
+  // Pencere sunucudan ÖNCE açılıyor: eskiden `startProdServer()` +
+  // `waitForServer()` bitene kadar hiçbir şey görünmüyordu, kullanıcı soğuk
+  // başlangıçta saniyelerce boş masaüstüne bakıyordu. `show: false` + ilk
+  // boyamada gösterme, `backgroundColor` ise koyu temada beyaz flaşı önlüyor.
+  const bounds = loadWindowBounds();
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    ...bounds,
+    minWidth: 900,
+    minHeight: 600,
+    show: false,
+    backgroundColor: APP_BACKGROUND_COLOR,
     icon: resolveAppIconPath(),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -83,6 +150,13 @@ async function createWindow() {
       nodeIntegration: false,
     },
   });
+  if (bounds.maximized) mainWindow.maximize();
+  mainWindow.once("ready-to-show", () => mainWindow?.show());
+
+  const port = isDev ? DEV_PORT : await startProdServer();
+  const url = isDev ? DEV_URL : `http://127.0.0.1:${port}`;
+
+  await waitForServer(url);
 
   // Render edilen markdown içeriğindeki harici linkler (target="_blank") pencereyi
   // ele geçirmesin; OS'nin varsayılan tarayıcısında açılsın.
@@ -101,6 +175,11 @@ async function createWindow() {
   });
 
   await mainWindow.loadURL(url);
+
+  mainWindow.on("resize", saveWindowBounds);
+  mainWindow.on("move", saveWindowBounds);
+  mainWindow.on("maximize", saveWindowBounds);
+  mainWindow.on("unmaximize", saveWindowBounds);
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
@@ -127,8 +206,6 @@ app.on("activate", () => {
 });
 
 app.on("before-quit", () => {
-  if (serverProcess) {
-    serverProcess.kill();
-    serverProcess = null;
-  }
+  saveWindowBounds();
+  stopServerProcess();
 });

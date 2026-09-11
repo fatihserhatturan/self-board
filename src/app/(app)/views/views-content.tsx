@@ -7,8 +7,9 @@ import { Layers, Trash2 } from "lucide-react";
 import { TopBar } from "@/components/app-shell/top-bar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Input } from "@/components/ui/input";
+import { InlineRenameInput } from "@/components/ui/inline-rename-input";
 import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
 import { deleteView, renameView } from "@/lib/actions/views";
@@ -25,6 +26,7 @@ export function ViewsContent({ projectId, projectName, views: initialViews }: Vi
   const { t } = useLocale();
   const router = useRouter();
   const [views, setViews] = useState(initialViews);
+  const [pendingDelete, setPendingDelete] = useState<SavedView | null>(null);
 
   async function handleRename(view: SavedView, name: string) {
     if (!name.trim() || name === view.name) return;
@@ -37,6 +39,7 @@ export function ViewsContent({ projectId, projectName, views: initialViews }: Vi
   }
 
   async function handleDelete(view: SavedView) {
+    setPendingDelete(null);
     const previous = views;
     setViews((prev) => prev.filter((v) => v.id !== view.id));
     const result = await deleteView(view.id);
@@ -73,14 +76,11 @@ export function ViewsContent({ projectId, projectName, views: initialViews }: Vi
                 key={view.id}
                 className="flex items-center gap-2 rounded-lg border border-border-default p-3"
               >
-                <Input
+                <InlineRenameInput
                   className="flex-1"
-                  defaultValue={view.name}
-                  key={`${view.id}-${view.name}`}
-                  onBlur={(e) => handleRename(view, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") e.currentTarget.blur();
-                  }}
+                  value={view.name}
+                  ariaLabel={t("views.saveDialog.namePlaceholder")}
+                  onRename={(next) => handleRename(view, next)}
                 />
                 <Badge size="sm" color="grey">
                   {t(view.layout === "board" ? "topbar.tab.board" : "topbar.tab.list")}
@@ -97,7 +97,7 @@ export function ViewsContent({ projectId, projectName, views: initialViews }: Vi
                   variant="ghost"
                   size="icon"
                   aria-label={t("views.card.deleteAction")}
-                  onClick={() => handleDelete(view)}
+                  onClick={() => setPendingDelete(view)}
                 >
                   <Trash2 className="size-3.5" />
                 </Button>
@@ -106,6 +106,19 @@ export function ViewsContent({ projectId, projectName, views: initialViews }: Vi
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete != null}
+        onOpenChange={(next) => {
+          if (!next) setPendingDelete(null);
+        }}
+        title={t("confirm.deleteView.title")}
+        description={t("confirm.deleteView.description")}
+        confirmLabel={t("common.delete")}
+        onConfirm={() => {
+          if (pendingDelete) void handleDelete(pendingDelete);
+        }}
+      />
     </>
   );
 }

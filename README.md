@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# self-board
 
-## Getting Started
+Tek kişilik geliştiriciler için Linear tarzı bir proje yönetim uygulaması. Tarayıcıda
+Next.js uygulaması olarak, masaüstünde ise Electron kabuğuyla paketlenmiş olarak çalışır.
+Tüm veri makinede, tek bir SQLite dosyasında durur — sunucu, hesap ya da ağ bağlantısı yok.
 
-First, run the development server:
+## Neler var
+
+- **Projeler** — her biri kendi issue ID öneki (`COR-12`), rengi ve ikonu ile.
+- **Issue'lar** — durum, öncelik, atanan, etiketler, zengin metin açıklaması (görsel
+  yükleme ve bağlantı önizlemesi dahil) ve notlar.
+- **Liste ve pano görünümü** — panoda sürükle-bırak ile durum değiştirme, her ikisinde
+  sağ tık menüsüyle hızlı durum/öncelik değişikliği.
+- **Cycle'lar** — Linear tarzı otomatik tekrarlayan dönemler, tamamlanmamış issue'ların
+  devri, burnup ve hız grafikleri, kapasite ölçeri.
+- **Kaydedilmiş görünümler** — filtre ve görünüm ayarlarının adlandırılmış anlık görüntüsü.
+- **Türkçe/İngilizce arayüz**, açık/koyu/sistem teması.
+
+## Çalıştırma
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # http://localhost:3000
+npm run electron:dev # Next dev sunucusu + Electron penceresi birlikte
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Doğrulama:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npx tsc --noEmit
+npm run lint
+npm test             # node:test + tsx, saf yardımcıların birim testleri
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Masaüstü derlemesi
 
-## Learn More
+```bash
+npm run electron:build
+```
 
-To learn more about Next.js, take a look at the following resources:
+`next build` çıktısını standalone sunucu olarak paketler, Electron'un kendi Node
+çalışma zamanıyla rastgele bir yerel portta ayağa kaldırır ve kurulum dosyasını
+`release/` altına yazar. Paketlenmiş uygulamada veritabanı Electron'un `userData`
+dizinindedir (Windows'ta `%APPDATA%/Self Board/self-board.db`).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Mimari
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Katman | Yer | Not |
+| --- | --- | --- |
+| Sayfalar | `src/app/(app)/` | Hepsi `force-dynamic`; her istekte SQLite okunur |
+| Okuma | `src/lib/data/` | React `cache()` ile istek başına tekilleştirilmiş sorgular |
+| Yazma | `src/lib/actions/` | Server Action'lar, `ActionResult<T>` döner, `revalidatePath` çağırır |
+| Şema | `src/lib/db/schema.ts` | DDL + elle yazılmış ileri yönlü migration'lar |
+| Bileşenler | `src/components/ui/` | Radix tabanlı tasarım sistemi |
+| Masaüstü | `electron/` | Ana süreç, preload, standalone hazırlama betiği |
 
-## Deploy on Vercel
+Birkaç bilinçli karar:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **`PRAGMA foreign_keys` açılmıyor.** Cascade silmeler sunucu eylemlerinde elle
+  yapılıyor (`deleteIssue`, `deleteProject`, `deleteLabel`). Şema `REFERENCES`
+  tanımlıyor ama uygulanmıyor — yeni bir silme yolu eklerken temizliği elle yazmak gerekir.
+- **Cycle'lar cron olmadan üretiliyor.** `getCycles()` istek anında bitmiş cycle'ları
+  yakalar, tamamlanmamış issue'ları devreder ve günlük snapshot yazar. Yani bir okuma
+  yolu yazma yapar; ayrıntılı gerekçe `src/lib/data/cycles.ts` içinde.
+- **`/design-system`** tasarım sistemi kataloğudur ve yalnızca geliştirme derlemesinde
+  açıktır. Uygulamada henüz kullanılmayan bazı bileşenler (hover card, date picker,
+  toggle group, alert, progress) burada yaşar ve bilerek tutulur.
+- **Tasarım token'ları** `src/styles/tokens.css` içinde. Koyu tema değerleri Linear'ın
+  Figma topluluk dosyasından alınmış; açık tema türetilmiştir.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Ajanlar için
+
+`AGENTS.md` dosyası `next dev` tarafından yazılır ve bu Next sürümünün eğitim
+verisinden farklı olabileceğini hatırlatır. Kod yazmadan önce
+`node_modules/next/dist/docs/` altındaki ilgili rehberi okuyun.

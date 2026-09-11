@@ -1,4 +1,6 @@
+import { cache } from "react";
 import { getDb } from "@/lib/db/client";
+import { asString } from "@/lib/db/row-values";
 import type { LabelColor } from "@/lib/actions/labels";
 
 export interface Project {
@@ -16,9 +18,6 @@ const PROJECT_SELECT = `
   FROM projects
 `;
 
-function asString(value: unknown): string {
-  return String(value);
-}
 
 function toProject(row: Record<string, unknown>): Project {
   return {
@@ -32,11 +31,12 @@ function toProject(row: Record<string, unknown>): Project {
   };
 }
 
-export async function getProjects(): Promise<Project[]> {
+/** `cache()`: `(app)` layout'u ve sayfalar aynı istekte bu listeyi paylaşıyor. */
+export const getProjects = cache(async function getProjects(): Promise<Project[]> {
   const db = getDb();
   const rows = db.prepare(`${PROJECT_SELECT} ORDER BY created_at ASC`).all();
   return rows.map((row) => toProject(row as Record<string, unknown>));
-}
+});
 
 export async function getProject(id: string): Promise<Project | null> {
   const db = getDb();

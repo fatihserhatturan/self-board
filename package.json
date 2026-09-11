@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "electron:dev": "concurrently -k -n NEXT,ELECTRON -c blue,green \"next dev\" \"wait-on http://127.0.0.1:3000 && tsc -p electron/tsconfig.json && cross-env SELF_BOARD_DEV=1 electron dist-electron/main.js\"",
     "electron:build": "next build && tsx electron/scripts/prepare-standalone.ts && tsc -p electron/tsconfig.json && electron-builder --config electron-builder.yml"
   },
