@@ -126,7 +126,6 @@ CREATE INDEX IF NOT EXISTS idx_cycles_project ON cycles(project_id, number);
 CREATE INDEX IF NOT EXISTS idx_states_project ON workflow_states(project_id, position);
 `;
 
-const LEGACY_CURRENT_USER_EMAIL = "turan.fatih@dgpaysit.com";
 
 /**
  * Şema sürümü `PRAGMA user_version`'da tutuluyor. Sürüm 1, `ensure*`
@@ -491,9 +490,10 @@ function ensureTeamsRemoved(db: DatabaseSync) {
 
 /**
  * `is_current` kolonu bu tabloya sonradan eklendi. `CREATE TABLE IF NOT EXISTS`
- * var olan tabloları değiştirmediği için, önceki sürümlerden gelen DB dosyalarında
- * kolonu ekleyip eski sabit CURRENT_USER e-postasıyla eşleşen satırı "ben" olarak
- * işaretliyoruz — kullanıcı elle bir şey yapmadan sürekliliği korur.
+ * var olan tabloları değiştirmediği için önceki sürümlerden gelen DB dosyalarında
+ * kolon ekleniyor. Hiçbir satır "ben" değilse ilk kullanıcı işaretleniyor:
+ * `getCurrentUser()` null dönerse My Issues boş kalır ve profil sayfası
+ * düzenlenecek bir kayıt bulamaz.
  */
 function ensureCurrentUserColumn(db: DatabaseSync) {
   const columns = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
@@ -502,10 +502,11 @@ function ensureCurrentUserColumn(db: DatabaseSync) {
     db.exec("ALTER TABLE users ADD COLUMN is_current INTEGER NOT NULL DEFAULT 0");
   }
 
-  db.prepare(
+  db.exec(
     `UPDATE users SET is_current = 1
-     WHERE email = ? AND NOT EXISTS (SELECT 1 FROM users WHERE is_current = 1)`,
-  ).run(LEGACY_CURRENT_USER_EMAIL);
+     WHERE id = (SELECT id FROM users ORDER BY rowid LIMIT 1)
+       AND NOT EXISTS (SELECT 1 FROM users WHERE is_current = 1)`,
+  );
 }
 
 /**

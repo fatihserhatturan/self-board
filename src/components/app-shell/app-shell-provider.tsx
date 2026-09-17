@@ -81,6 +81,9 @@ export function AppShellProvider({
         setSidebarCollapsed(!sidebarCollapsed);
         return;
       }
+      // Açık bir dialog içindeyken (odak bir düğmedeyse `isTypingTarget` false
+      // kalıyor) `c` yeni issue dialog'unu üst üste açıyordu.
+      if (event.target instanceof Element && event.target.closest('[role="dialog"]')) return;
       if (!mod && !event.altKey && key === "c") {
         event.preventDefault();
         setCreateIssueOpen(true);

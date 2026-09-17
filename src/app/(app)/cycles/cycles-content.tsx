@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSyncedState } from "@/lib/use-synced-state";
 import Link from "next/link";
 import { ChevronRight, RotateCw } from "lucide-react";
 import { TopBar } from "@/components/app-shell/top-bar";
@@ -37,7 +38,7 @@ export function CyclesContent({
   snapshots,
 }: CyclesContentProps) {
   const { t } = useLocale();
-  const [cycles, setCycles] = useState(initialCycles);
+  const [cycles, setCycles] = useSyncedState(initialCycles);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const today = useMemo(() => todayIsoDate(), []);
 

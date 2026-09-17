@@ -16,6 +16,8 @@ export async function GET(
     headers: {
       "Content-Type": row.mime_type,
       "Cache-Control": "public, max-age=31536000, immutable",
+      // MIME beyaz listeden geliyor; tarayıcı yine de tür tahmini yapmasın.
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }

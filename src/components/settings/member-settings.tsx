@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSyncedState } from "@/lib/use-synced-state";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
@@ -24,7 +25,7 @@ export interface MemberSettingsProps {
 export function MemberSettings({ members: initialMembers, currentUserId }: MemberSettingsProps) {
   const { t } = useLocale();
   const router = useRouter();
-  const [members, setMembers] = useState(initialMembers);
+  const [members, setMembers] = useSyncedState(initialMembers);
   const [pendingDelete, setPendingDelete] = useState<Person | null>(null);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSyncedState } from "@/lib/use-synced-state";
 import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ export interface LabelSettingsProps {
 
 export function LabelSettings({ labels: initialLabels, usage }: LabelSettingsProps) {
   const { t } = useLocale();
-  const [labels, setLabels] = useState(initialLabels);
+  const [labels, setLabels] = useSyncedState(initialLabels);
   const [pendingDelete, setPendingDelete] = useState<IssueLabel | null>(null);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState<LabelColor>("grey");

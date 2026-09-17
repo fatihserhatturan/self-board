@@ -16,6 +16,8 @@ Tüm veri makinede, tek bir SQLite dosyasında durur — sunucu, hesap ya da ağ
 - **Cycle'lar** — Linear tarzı otomatik tekrarlayan dönemler, tamamlanmamış issue'ların
   devri, burnup ve hız grafikleri, kapasite ölçeri.
 - **Kaydedilmiş görünümler** — filtre ve görünüm ayarlarının adlandırılmış anlık görüntüsü.
+- **Yedekleme** — Ayarlar > Veri altında JSON dökümü ve veritabanı dosyasının tam
+  kopyası (görseller dahil); aynı yerden geri yükleme.
 - **Türkçe/İngilizce arayüz**, açık/koyu/sistem teması.
 
 ## Çalıştırma
@@ -31,7 +33,8 @@ Doğrulama:
 ```bash
 npx tsc --noEmit
 npm run lint
-npm test             # node:test + tsx, saf yardımcıların birim testleri
+npm test             # node:test + tsx; saf yardımcılar ve bellek içi SQLite ile
+                     # şema/migration, silme, yazma doğrulaması, cycle devri, geri yükleme
 npm run build
 ```
 

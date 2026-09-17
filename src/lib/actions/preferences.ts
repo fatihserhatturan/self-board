@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client";
 import type { ActionResult } from "@/lib/actions/issues";
-import type { Preferences } from "@/lib/preferences-config";
+import { sanitizePreferences, type Preferences } from "@/lib/preferences-config";
 
 /**
  * Verilen tercihleri yazar. Kısmi güncelleme: yalnızca gönderilen anahtarlara
@@ -13,7 +13,8 @@ import type { Preferences } from "@/lib/preferences-config";
 export async function updatePreferences(
   input: Partial<Preferences>,
 ): Promise<ActionResult<{ updated: number }>> {
-  const entries = Object.entries(input).filter(([, value]) => value !== undefined);
+  // Yalnızca bilinen anahtarlar ve geçerli değerler yazılıyor.
+  const entries = Object.entries(sanitizePreferences(input));
   if (entries.length === 0) return { ok: true, data: { updated: 0 } };
 
   const db = getDb();
@@ -24,7 +25,7 @@ export async function updatePreferences(
 
   db.exec("BEGIN");
   try {
-    for (const [key, value] of entries) upsert.run(key, String(value));
+    for (const [key, value] of entries) upsert.run(key, value);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
