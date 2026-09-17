@@ -22,7 +22,7 @@ Tüm veri makinede, tek bir SQLite dosyasında durur — sunucu, hesap ya da ağ
 
 ```bash
 npm install
-npm run dev          # http://localhost:3000
+npm run dev          # http://127.0.0.1:3000 (yalnızca bu makineden erişilebilir)
 npm run electron:dev # Next dev sunucusu + Electron penceresi birlikte
 ```
 
