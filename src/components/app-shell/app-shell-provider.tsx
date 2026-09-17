@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useLocalStorageState } from "@/lib/use-local-storage-state";
 import { isTypingTarget } from "@/lib/keyboard";
-import type { BoardIssue } from "@/lib/data/issues";
+import type { IssueIndexEntry } from "@/lib/data/issues";
 import type { Project } from "@/lib/data/projects";
 
 export interface AppShellContextValue {
@@ -13,7 +13,8 @@ export interface AppShellContextValue {
   setCommandOpen: (open: boolean) => void;
   createIssueOpen: boolean;
   setCreateIssueOpen: (open: boolean) => void;
-  issues: BoardIssue[];
+  /** Komut paletinin aradığı hafif issue listesi (id, başlık, proje). */
+  issueIndex: IssueIndexEntry[];
   projects: Project[];
   /** Yeni issue dialog'u "bana ata" tercihini burada çözüyor. */
   currentUserId: string | null;
@@ -33,12 +34,12 @@ export function useAppShell(): AppShellContextValue {
 
 export function AppShellProvider({
   children,
-  issues,
+  issueIndex,
   projects,
   currentUserId,
 }: {
   children: ReactNode;
-  issues: BoardIssue[];
+  issueIndex: IssueIndexEntry[];
   projects: Project[];
   currentUserId: string | null;
 }) {
@@ -98,7 +99,7 @@ export function AppShellProvider({
         setCommandOpen,
         createIssueOpen,
         setCreateIssueOpen,
-        issues,
+        issueIndex,
         projects,
         currentUserId,
         activeProjectId,

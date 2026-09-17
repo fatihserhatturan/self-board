@@ -3,7 +3,7 @@ import { CommandPalette } from "@/components/app-shell/command-palette";
 import { GlobalCreateIssueDialog } from "@/components/app-shell/global-create-issue-dialog";
 import { Sidebar } from "@/components/app-shell/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { getCurrentUser, getIssues, getLabels, getUsers } from "@/lib/data/issues";
+import { getCurrentUser, getIssueIndex, getLabels, getUsers } from "@/lib/data/issues";
 import { getProjects } from "@/lib/data/projects";
 
 // Diğer route'larda olduğu gibi: canlı SQLite state'i okuyoruz, build-time
@@ -11,17 +11,17 @@ import { getProjects } from "@/lib/data/projects";
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const [users, labels, currentUser, issues, projects] = await Promise.all([
+  const [users, labels, currentUser, issueIndex, projects] = await Promise.all([
     getUsers(),
     getLabels(),
     getCurrentUser(),
-    getIssues(),
+    getIssueIndex(),
     getProjects(),
   ]);
 
   return (
     <TooltipProvider delayDuration={200}>
-      <AppShellProvider issues={issues} projects={projects} currentUserId={currentUser?.id ?? null}>
+      <AppShellProvider issueIndex={issueIndex} projects={projects} currentUserId={currentUser?.id ?? null}>
         <div className="flex h-full min-h-0">
           <Sidebar currentUser={currentUser} />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
