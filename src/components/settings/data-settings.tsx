@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Download } from "lucide-react";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
 import { useLocale } from "@/components/locale-provider";
 import {
@@ -33,7 +35,33 @@ function formatBytes(bytes: number): string {
 
 export function DataSettings({ stats }: DataSettingsProps) {
   const { t } = useLocale();
+  const router = useRouter();
   const [exporting, setExporting] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [pendingRestore, setPendingRestore] = useState<File | null>(null);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
+
+  /** Yedek dosyası ham gövde olarak gönderiliyor; server action gövde sınırına takılmasın. */
+  async function handleRestore() {
+    const file = pendingRestore;
+    setPendingRestore(null);
+    if (!file) return;
+
+    setRestoring(true);
+    try {
+      const response = await fetch("/api/backup", { method: "POST", body: file });
+      if (!response.ok) {
+        toast.error(t("settings.data.restoreError"));
+        return;
+      }
+      toast.success(t("settings.data.restored"));
+      router.refresh();
+    } catch {
+      toast.error(t("settings.data.restoreError"));
+    } finally {
+      setRestoring(false);
+    }
+  }
 
   async function handleExport() {
     setExporting(true);
@@ -95,6 +123,65 @@ export function DataSettings({ stats }: DataSettingsProps) {
           }
         />
       </SettingsSection>
+
+      <SettingsSection title={t("settings.data.backup")}>
+        <SettingsRow
+          label={t("settings.data.backup")}
+          description={t("settings.data.backupHint")}
+          stacked
+          control={
+            // JSON dökümünün aksine bu dosya BLOB'ları da içeriyor; sunucu
+            // `VACUUM INTO` ile tutarlı bir kopya üretip gönderiyor.
+            <Button className="self-start" asChild>
+              <a href="/api/backup" download>
+                <Download className="size-3.5" />
+                {t("settings.data.backupAction")}
+              </a>
+            </Button>
+          }
+        />
+        <SettingsRow
+          label={t("settings.data.restore")}
+          description={t("settings.data.restoreHint")}
+          stacked
+          control={
+            <>
+              <Button
+                variant="secondary"
+                className="self-start"
+                loading={restoring}
+                onClick={() => restoreInputRef.current?.click()}
+              >
+                <Upload className="size-3.5" />
+                {t("settings.data.restoreAction")}
+              </Button>
+              <input
+                ref={restoreInputRef}
+                type="file"
+                accept=".db,application/octet-stream"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  event.target.value = "";
+                  setPendingRestore(file);
+                }}
+              />
+            </>
+          }
+        />
+      </SettingsSection>
+
+      <ConfirmDialog
+        open={pendingRestore != null}
+        onOpenChange={(next) => {
+          if (!next) setPendingRestore(null);
+        }}
+        title={t("confirm.restore.title")}
+        description={t("confirm.restore.description")}
+        confirmLabel={t("settings.data.restore")}
+        loading={restoring}
+        onConfirm={() => void handleRestore()}
+      />
     </SettingsPage>
   );
 }

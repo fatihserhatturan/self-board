@@ -4,23 +4,25 @@ import { getDb } from "@/lib/db/client";
 import type { ActionResult } from "@/lib/actions/issues";
 
 /**
- * Tüm çalışma alanının JSON dökümü. Veri tek bir SQLite dosyasında duruyor ve
- * arayüzden hiçbir şekilde dışarı alınamıyordu — tek kişilik bir araçta bu,
- * kullanıcının verisini uygulamaya kilitliyor.
+ * Tüm çalışma alanının JSON dökümü — okunabilir, başka bir araca taşınabilir
+ * bir kopya. BLOB kolonları (attachment ve proje ikonu verisi) bilerek
+ * dışarıda; görselleri de içeren tam kopya için `/api/backup` (SQLite dosyası).
  *
- * BLOB kolonları (attachment ve proje ikonu verisi) bilerek dışarıda: döküm
- * okunabilir ve makul boyutta kalsın diye yalnızca üst veri alınıyor.
+ * `workflow_states` ve `app_settings` önce eksikti: issue'lar durumlara işaret
+ * ettiği için o tablo olmadan döküm tek başına anlamlı değildi.
  */
 const EXPORTED_TABLES = [
   "users",
   "labels",
   "projects",
+  "workflow_states",
   "cycles",
   "cycle_snapshots",
   "issues",
   "issue_labels",
   "issue_notes",
   "views",
+  "app_settings",
 ] as const;
 
 const COLUMN_SELECT: Partial<Record<(typeof EXPORTED_TABLES)[number], string>> = {
@@ -38,7 +40,7 @@ export async function exportWorkspace(): Promise<ActionResult<{ json: string }>>
 
   const payload = {
     format: "self-board-export",
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     data,
   };
