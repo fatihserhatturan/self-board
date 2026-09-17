@@ -17,7 +17,7 @@ import { useLocale } from "@/components/locale-provider";
 import { updateIssuePriority, updateIssueState } from "@/lib/actions/issues";
 import type { BoardIssue } from "@/lib/data/issues";
 import { priorityLevels } from "@/lib/token-manifest";
-import { useWorkflowStates } from "@/components/board/workflow-states-provider";
+import { useProjectStatesFromContext } from "@/components/board/workflow-states-provider";
 
 export interface IssueContextMenuProps {
   issue: BoardIssue;
@@ -31,8 +31,7 @@ export interface IssueContextMenuProps {
  * indiriyor.
  */
 export function IssueContextMenu({ issue, children }: IssueContextMenuProps) {
-  // Projeler-arası görünümlerde boş gelir; menünün durum bölümü o zaman gizlenir.
-  const states = useWorkflowStates();
+  const states = useProjectStatesFromContext(issue.projectId);
   const { t } = useLocale();
   const router = useRouter();
   const [, startTransition] = useTransition();

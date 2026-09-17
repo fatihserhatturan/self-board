@@ -75,9 +75,44 @@ export interface IssueCardProps {
 }
 
 export function IssueCard({ issue, onOpen, viewOptions, draggable = true }: IssueCardProps) {
+  // Etikete göre gruplandığında bir issue birden çok sütunda görünüyor; her biri
+  // `useDraggable` çağırsaydı aynı id dnd-kit'in kaydına iki kez girerdi. Sürükleme
+  // kapalı olan sütunlar hook'u hiç kurmayan bu dala düşüyor.
+  if (!draggable) {
+    return <StaticIssueCard issue={issue} onOpen={onOpen} viewOptions={viewOptions} />;
+  }
+  return <DraggableIssueCard issue={issue} onOpen={onOpen} viewOptions={viewOptions} />;
+}
+
+function StaticIssueCard({ issue, onOpen, viewOptions }: IssueCardProps) {
+  return (
+    <IssueContextMenu issue={issue}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={`${issue.id} ${issue.title}`}
+        className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+        onClick={() => onOpen?.(issue)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onOpen?.(issue);
+          }
+        }}
+      >
+        <IssueCardContent
+          issue={issue}
+          viewOptions={viewOptions}
+          className="cursor-pointer hover:border-border-strong"
+        />
+      </div>
+    </IssueContextMenu>
+  );
+}
+
+function DraggableIssueCard({ issue, onOpen, viewOptions }: IssueCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: issue.id,
-    disabled: !draggable,
   });
 
   const style = transform
@@ -109,8 +144,7 @@ export function IssueCard({ issue, onOpen, viewOptions, draggable = true }: Issu
         issue={issue}
         viewOptions={viewOptions}
         className={cn(
-          "hover:border-border-strong",
-          draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+          "cursor-grab hover:border-border-strong active:cursor-grabbing",
           isDragging && "opacity-40",
         )}
       />

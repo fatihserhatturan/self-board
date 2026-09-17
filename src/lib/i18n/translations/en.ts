@@ -121,6 +121,7 @@ export const en: Record<keyof typeof tr, string> = {
   "markdownEditor.unsupportedType": "Unsupported file type (PNG, JPEG, GIF, WEBP)",
   "markdownEditor.fileTooLarge": "File too large (max 5MB)",
   "markdownEditor.uploadError": "Failed to upload file",
+  "issueForm.project.label": "Project",
   "issueForm.status.label": "Status",
   "issueForm.priority.label": "Priority",
   "issueForm.assignee.label": "Assignee",

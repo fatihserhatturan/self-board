@@ -44,7 +44,9 @@ export default async function IssuesPage({
 
   return (
     <IssueWorkspace
-      key={`${project.id}:${cycleId ?? ""}`}
+      // `viewId` de anahtarda: iki kaydedilmiş görünüm arasında gezinirken
+      // (ör. geri/ileri) bileşen yeniden kurulmazsa eski filtreler kalıyordu.
+      key={`${project.id}:${cycleId ?? ""}:${viewId ?? ""}`}
       titleKey="nav.issues"
       breadcrumb={breadcrumb}
       projectId={project.id}

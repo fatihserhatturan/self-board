@@ -119,6 +119,7 @@ export const tr = {
   "markdownEditor.unsupportedType": "Desteklenmeyen dosya türü (PNG, JPEG, GIF, WEBP)",
   "markdownEditor.fileTooLarge": "Dosya çok büyük (maksimum 5MB)",
   "markdownEditor.uploadError": "Dosya yüklenemedi",
+  "issueForm.project.label": "Proje",
   "issueForm.status.label": "Durum",
   "issueForm.priority.label": "Öncelik",
   "issueForm.assignee.label": "Atanan",

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Inter } from "next/font/google";
+import { LOCALE_COOKIE, parseLocale } from "@/lib/i18n/types";
 import { LocaleProvider } from "@/components/locale-provider";
 import { PreferencesProvider } from "@/components/preferences-provider";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -23,12 +25,15 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const preferences = await getPreferences();
+  const [preferences, cookieStore] = await Promise.all([getPreferences(), cookies()]);
+  // Dil cookie'den: ilk boyama doğru dille geliyor, dil değişimi de sunucu
+  // render'ıyla tutarlı kalıyor.
+  const locale = parseLocale(cookieStore.get(LOCALE_COOKIE)?.value);
 
   return (
-    <html lang="tr" className={`${inter.variable} h-full`} suppressHydrationWarning>
+    <html lang={locale} className={`${inter.variable} h-full`} suppressHydrationWarning>
       <body className="h-full flex flex-col font-sans antialiased">
-        <LocaleProvider>
+        <LocaleProvider initialLocale={locale}>
           <PreferencesProvider preferences={preferences}>
             {/* `enableSystem`: işletim sistemi temasını izleyen üçüncü bir seçenek —
                 ayarlarda "Sistem" olarak sunuluyor. Varsayılan hâlâ koyu tema. */}
