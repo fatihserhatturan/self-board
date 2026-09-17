@@ -96,8 +96,12 @@ function recordCycleSnapshot(db: DatabaseSync, cycleId: string, date: string): v
  * cycle'ın kapanış snapshot'ı alınır — aksi halde o cycle'ın gerçek scope'u
  * ve kaç issue devrettiği kalıcı olarak kaybolurdu.
  */
-function ensureCyclesReady(db: DatabaseSync, projectId: string, durationDays: number): void {
-  const today = todayIsoDate();
+export function ensureCyclesReady(
+  db: DatabaseSync,
+  projectId: string,
+  durationDays: number,
+  today: string,
+): void {
 
   const cycles = db
     .prepare(
@@ -152,15 +156,38 @@ function insertCycle(
 }
 
 
-export async function getCycles(projectId: string): Promise<Cycle[]> {
-  const db = getDb();
+/**
+ * Cycle'ları yakalayıp (oluşturma, devir, snapshot) sayımlarıyla döner. Bir
+ * okuma yolu yazdığı için tamamı tek transaction: yarıda kalan bir devir
+ * issue'ları iki cycle arasında bölünmüş bırakmıyor. `today` testler için
+ * dışarıdan verilebiliyor.
+ */
+export function syncCycles(db: DatabaseSync, projectId: string, today = todayIsoDate()): Cycle[] {
   const project = db.prepare("SELECT cycle_duration_days FROM projects WHERE id = ?").get(projectId) as
     | { cycle_duration_days: number }
     | undefined;
   if (!project) return [];
 
-  ensureCyclesReady(db, projectId, project.cycle_duration_days);
+  db.exec("BEGIN");
+  try {
+    ensureCyclesReady(db, projectId, project.cycle_duration_days, today);
+    const cycles = readCycles(db, projectId);
 
+    // Bugünün snapshot'ı: henüz bitmemiş cycle'lar için (aktif + yaklaşan).
+    // Tamamlanmış cycle'ların kapanış snapshot'ı zaten rollover sırasında alındı.
+    for (const cycle of cycles) {
+      if (cycle.endsAt >= today) recordCycleSnapshot(db, cycle.id, today);
+    }
+
+    db.exec("COMMIT");
+    return cycles;
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+function readCycles(db: DatabaseSync, projectId: string): Cycle[] {
   const rows = db
     .prepare(
       `SELECT
@@ -181,7 +208,7 @@ export async function getCycles(projectId: string): Promise<Cycle[]> {
     )
     .all(projectId);
 
-  const cycles = rows.map((row) => {
+  return rows.map((row) => {
     const r = row as Record<string, unknown>;
     return {
       id: asString(r.id),
@@ -202,15 +229,10 @@ export async function getCycles(projectId: string): Promise<Cycle[]> {
       createdAt: asString(r.created_at),
     };
   });
+}
 
-  // Bugünün snapshot'ı: henüz bitmemiş cycle'lar için (aktif + yaklaşan).
-  // Tamamlanmış cycle'ların kapanış snapshot'ı zaten rollover sırasında alındı.
-  const today = todayIsoDate();
-  for (const cycle of cycles) {
-    if (cycle.endsAt >= today) recordCycleSnapshot(db, cycle.id, today);
-  }
-
-  return cycles;
+export async function getCycles(projectId: string): Promise<Cycle[]> {
+  return syncCycles(getDb(), projectId);
 }
 
 /** Bir projenin tüm cycle snapshot'ları, cycle id'sine göre gruplanmış. */

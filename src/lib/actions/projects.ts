@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client";
+import { deleteProjectCascade } from "@/lib/db/cascade";
 import { seedProjectStates } from "@/lib/db/schema";
 import type { ActionResult } from "@/lib/actions/issues";
 import type { LabelColor } from "@/lib/actions/labels";
@@ -113,31 +114,7 @@ export async function deleteProject(id: string): Promise<ActionResult<{ id: stri
   };
   if (count <= 1) return { ok: false, error: "cannot-delete-last-project" };
 
-  db.exec("BEGIN");
-  try {
-    db.prepare(
-      `DELETE FROM issue_labels WHERE issue_id IN (SELECT id FROM issues WHERE project_id = ?)`,
-    ).run(id);
-    db.prepare(
-      `DELETE FROM issue_notes WHERE issue_id IN (SELECT id FROM issues WHERE project_id = ?)`,
-    ).run(id);
-    db.prepare(
-      `DELETE FROM attachments WHERE issue_id IN (SELECT id FROM issues WHERE project_id = ?)`,
-    ).run(id);
-    db.prepare("DELETE FROM issues WHERE project_id = ?").run(id);
-    db.prepare("DELETE FROM views WHERE project_id = ?").run(id);
-    db.prepare(
-      "DELETE FROM cycle_snapshots WHERE cycle_id IN (SELECT id FROM cycles WHERE project_id = ?)",
-    ).run(id);
-    db.prepare("DELETE FROM cycles WHERE project_id = ?").run(id);
-    const result = db.prepare("DELETE FROM projects WHERE id = ?").run(id);
-    db.exec("COMMIT");
-
-    if (Number(result.changes) === 0) return { ok: false, error: "project-not-found" };
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  }
+  if (!deleteProjectCascade(db, id)) return { ok: false, error: "project-not-found" };
 
   revalidatePath("/projects");
   revalidatePath("/issues");

@@ -24,12 +24,15 @@ export default async function IssuesPage({
     redirect(`/issues?project=${project.id}`);
   }
 
-  const [issues, users, labels, savedView, cycles, states] = await Promise.all([
+  // Önce cycle'lar: `getCycles` bitmiş cycle'ların issue'larını devrediyor.
+  // `Promise.all` içinde `getIssues` senkron olarak önce çalışıp devir öncesi
+  // atamaları okuyordu — devir günü sayfa eski cycle'ı gösteriyordu.
+  const cycles = await getCycles(project.id);
+  const [issues, users, labels, savedView, states] = await Promise.all([
     getIssues(project.id, cycleId),
     getUsers(),
     getLabels(),
     viewId ? getView(viewId) : Promise.resolve(null),
-    getCycles(project.id),
     getWorkflowStates(project.id),
   ]);
 

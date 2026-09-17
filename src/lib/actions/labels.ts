@@ -43,8 +43,8 @@ export async function updateLabel(
 
 export async function deleteLabel(id: string): Promise<ActionResult<{ id: string }>> {
   const db = getDb();
-  // Şema `issue_labels.label_id` için CASCADE tanımlamıyor ve proje foreign key
-  // enforcement'ı açmıyor — orphan satır kalmasın diye önce join tablosunu temizliyoruz.
+  // Şema `issue_labels.label_id` için CASCADE tanımlamıyor — join tablosu
+  // temizlenmeden etiketi silmek FK kısıtına çarpar.
   db.prepare("DELETE FROM issue_labels WHERE label_id = ?").run(id);
   const result = db.prepare("DELETE FROM labels WHERE id = ?").run(id);
 

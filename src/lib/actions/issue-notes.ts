@@ -3,9 +3,10 @@
 import { getDb } from "@/lib/db/client";
 import { asString } from "@/lib/db/row-values";
 import { linkAttachmentsToIssue } from "@/lib/db/attachment-links";
+import { deleteNoteCascade } from "@/lib/db/cascade";
+import { issueExists } from "@/lib/db/validation";
 import type { IssueNote } from "@/lib/data/issue-notes";
 import type { ActionResult } from "@/lib/actions/issues";
-
 
 export async function getIssueNotes(issueId: string): Promise<IssueNote[]> {
   const db = getDb();
@@ -29,10 +30,12 @@ export async function addIssueNote(
   issueId: string,
   body: string,
 ): Promise<ActionResult<IssueNote>> {
-  const trimmed = body.trim();
+  const trimmed = typeof body === "string" ? body.trim() : "";
   if (!trimmed) return { ok: false, error: "body-required" };
 
   const db = getDb();
+  if (!issueExists(db, issueId)) return { ok: false, error: "issue-not-found" };
+
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
 
@@ -49,9 +52,6 @@ export async function addIssueNote(
 }
 
 export async function deleteIssueNote(noteId: string): Promise<ActionResult<{ id: string }>> {
-  const db = getDb();
-  const result = db.prepare("DELETE FROM issue_notes WHERE id = ?").run(noteId);
-
-  if (Number(result.changes) === 0) return { ok: false, error: "note-not-found" };
+  if (!deleteNoteCascade(getDb(), noteId)) return { ok: false, error: "note-not-found" };
   return { ok: true, data: { id: noteId } };
 }

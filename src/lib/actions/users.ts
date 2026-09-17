@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "@/lib/db/client";
+import { isValidEmail } from "@/lib/db/validation";
 import type { ActionResult } from "@/lib/actions/issues";
 import type { Person } from "@/lib/data/issues";
 
@@ -27,7 +28,7 @@ function isEmailTaken(db: DatabaseSync, email: string, exceptId?: string): boole
 export async function updateCurrentUser(name: string, email: string): Promise<ActionResult<Person>> {
   const trimmedName = name.trim();
   const trimmedEmail = email.trim();
-  if (!trimmedName || !trimmedEmail) return { ok: false, error: "invalid-input" };
+  if (!trimmedName || !isValidEmail(trimmedEmail)) return { ok: false, error: "invalid-input" };
 
   const db = getDb();
   const current = db.prepare("SELECT id FROM users WHERE is_current = 1 LIMIT 1").get() as
@@ -50,7 +51,7 @@ export async function updateCurrentUser(name: string, email: string): Promise<Ac
 export async function createUser(name: string, email: string): Promise<ActionResult<Person>> {
   const trimmedName = name.trim();
   const trimmedEmail = email.trim();
-  if (!trimmedName || !trimmedEmail) return { ok: false, error: "invalid-input" };
+  if (!trimmedName || !isValidEmail(trimmedEmail)) return { ok: false, error: "invalid-input" };
 
   const db = getDb();
   if (isEmailTaken(db, trimmedEmail)) return { ok: false, error: "email-taken" };
@@ -72,7 +73,7 @@ export async function updateUser(
 ): Promise<ActionResult<{ id: string }>> {
   const name = input.name.trim();
   const email = input.email.trim();
-  if (!name || !email) return { ok: false, error: "invalid-input" };
+  if (!name || !isValidEmail(email)) return { ok: false, error: "invalid-input" };
 
   const db = getDb();
   if (isEmailTaken(db, email, id)) return { ok: false, error: "email-taken" };
@@ -115,8 +116,8 @@ export async function deleteUser(id: string): Promise<ActionResult<{ id: string 
 
   db.exec("BEGIN");
   try {
-    // Şema `issues.assignee_id` için foreign key uygulamıyor (bkz. schema.ts);
-    // yetim atama kalmasın diye önce elle boşaltılıyor — `deleteLabel` deseni.
+    // `issues.assignee_id` için `ON DELETE` tanımlı değil: atamalar boşaltılmadan
+    // kullanıcıyı silmek FK kısıtına çarpar — `deleteLabel` deseni.
     db.prepare("UPDATE issues SET assignee_id = NULL WHERE assignee_id = ?").run(id);
     db.prepare("DELETE FROM users WHERE id = ?").run(id);
     db.exec("COMMIT");

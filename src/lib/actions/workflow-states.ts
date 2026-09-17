@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "@/lib/db/client";
+import { isValidStatusType, projectExists } from "@/lib/db/validation";
 import type { ActionResult } from "@/lib/actions/issues";
 import type { LabelColor } from "@/lib/actions/labels";
 import type { StatusType, WorkflowState } from "@/lib/board/workflow-config";
@@ -41,8 +42,11 @@ export async function createWorkflowState(
 ): Promise<ActionResult<WorkflowState>> {
   const name = input.name.trim();
   if (!name) return { ok: false, error: "name-required" };
+  if (!isValidStatusType(input.type)) return { ok: false, error: "type-invalid" };
 
   const db = getDb();
+  if (!projectExists(db, input.projectId)) return { ok: false, error: "project-not-found" };
+
   const { next } = db
     .prepare(
       "SELECT COALESCE(MAX(position), -1) + 1 AS next FROM workflow_states WHERE project_id = ?",
@@ -76,6 +80,7 @@ export async function updateWorkflowState(
 ): Promise<ActionResult<{ id: string }>> {
   const name = input.name.trim();
   if (!name) return { ok: false, error: "name-required" };
+  if (!isValidStatusType(input.type)) return { ok: false, error: "type-invalid" };
 
   const db = getDb();
   const state = readState(db, id);
@@ -140,10 +145,9 @@ export async function moveWorkflowState(
 }
 
 /**
- * Durumu siler ve üzerindeki issue'ları `replacementId`'ye taşır. Şema foreign
- * key uygulamadığı için taşıma elle yapılıyor (`deleteLabel` ile aynı desen) —
- * aksi halde issue'lar var olmayan bir duruma işaret eder ve `getIssues`
- * join'inden düşüp listeden kaybolurdu.
+ * Durumu siler ve üzerindeki issue'ları `replacementId`'ye taşır.
+ * `issues.state_id` için `ON DELETE` tanımlı değil: issue'lar taşınmadan durumu
+ * silmek FK kısıtına çarpar (`deleteLabel` ile aynı desen).
  */
 export async function deleteWorkflowState(
   id: string,
