@@ -24,6 +24,10 @@ const EXTERNAL_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
  * Sunucu hazır olana kadar gösterilen ekran. Eskiden pencere `show: false` ile
  * açılıp `ready-to-show`'da gösteriliyordu; o olay ancak gerçek sayfa
  * yüklendiğinde geldiği için soğuk başlangıçta pencere yine saniyelerce yoktu.
+ *
+ * Geçici bir dosyaya yazılıp `loadFile` ile açılıyor: Chromium üst seviye
+ * `data:` URL navigasyonunu engelliyor, `loadURL` ile pencerede hata sayfası
+ * çıkıyordu.
  */
 const LOADING_HTML = `<!doctype html><html><head><meta charset="utf-8"><style>
   html,body{height:100%;margin:0;background:${APP_BACKGROUND_COLOR};color:#858699;
@@ -37,6 +41,8 @@ let mainWindow: BrowserWindow | null = null;
 let serverProcess: ChildProcess | null = null;
 let serverUrl: Promise<string> | null = null;
 let quitting = false;
+/** Sunucu hata çıktısının son parçası — açılış başarısız olursa hata kutusunda gösteriliyor. */
+let serverErrorTail = "";
 
 interface WindowBounds {
   width: number;
@@ -149,6 +155,17 @@ function findFreePort(): Promise<number> {
   });
 }
 
+/** Yükleniyor ekranını geçici dizine yazar; yazılamazsa pencere boş zeminle açılır. */
+function writeLoadingPage(): string | null {
+  try {
+    const target = path.join(app.getPath("temp"), "self-board-loading.html");
+    writeFileSync(target, LOADING_HTML, "utf-8");
+    return target;
+  } catch {
+    return null;
+  }
+}
+
 function resolveStandaloneServerPath(): string {
   // Paketlenmiş uygulamada standalone sunucu ağacı ASAR dışında, extraResources ile taşınır.
   const base = app.isPackaged
@@ -189,14 +206,29 @@ async function startProdServer(): Promise<string> {
       ELECTRON_RUN_AS_NODE: "1",
       SELF_BOARD_DB_DIR: app.getPath("userData"),
     },
-    stdio: "inherit",
+    // Paketlenmiş uygulamada konsol yok; "inherit" ile sunucunun hata çıktısı
+    // hiçbir yere düşmüyordu. Son satırlar hata kutusunda gösteriliyor.
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  serverProcess.stdout?.on("data", (chunk: Buffer) => console.log(String(chunk).trimEnd()));
+  serverProcess.stderr?.on("data", (chunk: Buffer) => {
+    const text = String(chunk);
+    console.error(text.trimEnd());
+    serverErrorTail = `${serverErrorTail}${text}`.slice(-2000);
   });
 
   // Sunucu uygulama açıkken düşerse pencere sessizce ölü bir sayfaya dönüşüyordu.
   serverProcess.on("exit", (code) => {
     serverProcess = null;
     if (quitting) return;
-    failAndQuit(new Error(`Sunucu beklenmedik şekilde kapandı (çıkış kodu ${code}).`));
+    failAndQuit(
+      new Error(
+        `Sunucu beklenmedik şekilde kapandı (çıkış kodu ${code}).${
+          serverErrorTail ? `\n\n${serverErrorTail.trim()}` : ""
+        }`,
+      ),
+    );
   });
 
   const url = `http://127.0.0.1:${port}`;
@@ -228,7 +260,8 @@ async function createWindow() {
   });
   mainWindow = window;
   if (bounds.maximized) window.maximize();
-  void window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(LOADING_HTML)}`);
+  const loadingPage = writeLoadingPage();
+  if (loadingPage) void window.loadFile(loadingPage);
 
   window.on("resize", scheduleSaveWindowBounds);
   window.on("move", scheduleSaveWindowBounds);

@@ -47,7 +47,7 @@ npm run electron:build
 `next build` çıktısını standalone sunucu olarak paketler, Electron'un kendi Node
 çalışma zamanıyla rastgele bir yerel portta ayağa kaldırır ve kurulum dosyasını
 `release/` altına yazar. Paketlenmiş uygulamada veritabanı Electron'un `userData`
-dizinindedir (Windows'ta `%APPDATA%/Self Board/self-board.db`).
+dizinindedir (Windows'ta `%APPDATA%/self-board/self-board.db`).
 
 ## Mimari
 

@@ -2,12 +2,24 @@ appId: com.selfboard.app
 productName: Self Board
 directories:
   output: release
+# Ana süreç yalnızca Electron'un kendi API'lerini ve Node built-in'lerini
+# kullanıyor; uygulamanın React tarafı standalone sunucudan geliyor. Bu yüzden
+# node_modules asar'a girmiyor (kurulum dosyası 240 MB'tan ~90 MB'a düşüyor).
 files:
   - dist-electron/**/*
   - package.json
+  - "!node_modules/**/*"
+# Standalone sunucunun node_modules'ünü kopyalar; electron-builder
+# `extraResources` içinde node_modules'ü atlıyor (bkz. betikteki açıklama).
+afterPack: electron/scripts/after-pack.js
 extraResources:
+  # `data/` geliştirme sırasında oluşan yerel veritabanı — pakete girmemeli.
   - from: .next/standalone
     to: standalone
+    filter:
+      - "**/*"
+      - "!data"
+      - "!data/**/*"
   - from: resources/icon/icon.png
     to: icon.png
 win:
