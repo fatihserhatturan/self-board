@@ -92,11 +92,17 @@ export function IssueDetailDialog({
       return;
     }
     setSubmitting(true);
-    const result = await updateIssue(issue.id, values);
-    setSubmitting(false);
-    if (!result.ok) {
+    try {
+      const result = await updateIssue(issue.id, values);
+      if (!result.ok) {
+        toast.error(t("toast.issue.updateError"));
+        return;
+      }
+    } catch {
       toast.error(t("toast.issue.updateError"));
       return;
+    } finally {
+      setSubmitting(false);
     }
     toast.success(t("toast.issue.updated"));
     startTransition(() => {
@@ -108,12 +114,18 @@ export function IssueDetailDialog({
   async function handleDelete() {
     if (!issue) return;
     setSubmitting(true);
-    const result = await deleteIssue(issue.id);
-    setSubmitting(false);
-    setConfirmDeleteOpen(false);
-    if (!result.ok) {
+    try {
+      const result = await deleteIssue(issue.id);
+      if (!result.ok) {
+        toast.error(t("toast.issue.deleteError"));
+        return;
+      }
+    } catch {
       toast.error(t("toast.issue.deleteError"));
       return;
+    } finally {
+      setSubmitting(false);
+      setConfirmDeleteOpen(false);
     }
     toast.success(t("toast.issue.deleted"));
     startTransition(() => {

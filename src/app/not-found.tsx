@@ -12,7 +12,8 @@ export default function NotFound() {
       icon={FileQuestion}
       title={t("notFound.title")}
       description={t("notFound.description")}
-      action={{ label: t("error.backHome"), href: "/my-issues" }}
+      // Kök route başlangıç sayfası tercihine yönlendiriyor.
+      action={{ label: t("error.backHome"), href: "/" }}
     />
   );
 }

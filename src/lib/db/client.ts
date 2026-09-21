@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { pruneOrphanedAttachments } from "@/lib/db/attachment-links";
 import { ensureSchema, seedIfEmpty } from "@/lib/db/schema";
 
 let db: DatabaseSync | null = null;
@@ -24,5 +25,6 @@ export function getDb(): DatabaseSync {
   db.exec("PRAGMA journal_mode = WAL;");
   ensureSchema(db);
   seedIfEmpty(db);
+  pruneOrphanedAttachments(db);
   return db;
 }

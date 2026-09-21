@@ -1,6 +1,8 @@
 "use server";
 
+import { lookup } from "node:dns/promises";
 import { getDb } from "@/lib/db/client";
+import { decodeHtmlEntities, isBlockedAddress } from "@/lib/link-preview-safety";
 import type { ActionResult } from "@/lib/actions/issues";
 
 export interface LinkPreviewData {
@@ -43,25 +45,32 @@ function isSafeUrl(raw: string): URL | null {
   return url;
 }
 
+/**
+ * Tek ve çift tırnak ayrı ayrı deneniyor: tek bir `["']([^"']*)["']` deseni,
+ * içinde kesme işareti geçen bir `content` değerini ortasından kesiyordu.
+ */
+function metaPatterns(name: string): RegExp[] {
+  return [
+    new RegExp(`<meta[^>]+(?:property|name)="${name}"[^>]+content="([^"]*)"`, "i"),
+    new RegExp(`<meta[^>]+(?:property|name)='${name}'[^>]+content='([^']*)'`, "i"),
+    new RegExp(`<meta[^>]+content="([^"]*)"[^>]+(?:property|name)="${name}"`, "i"),
+    new RegExp(`<meta[^>]+content='([^']*)'[^>]+(?:property|name)='${name}'`, "i"),
+  ];
+}
+
 function extractMeta(html: string, names: string[]): string | null {
   for (const name of names) {
-    const propertyMatch = new RegExp(
-      `<meta[^>]+(?:property|name)=["']${name}["'][^>]+content=["']([^"']*)["']`,
-      "i",
-    ).exec(html);
-    if (propertyMatch?.[1]) return propertyMatch[1];
-
-    const reversedMatch = new RegExp(
-      `<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']${name}["']`,
-      "i",
-    ).exec(html);
-    if (reversedMatch?.[1]) return reversedMatch[1];
+    for (const pattern of metaPatterns(name)) {
+      const match = pattern.exec(html);
+      if (match?.[1]) return decodeHtmlEntities(match[1]);
+    }
   }
   return null;
 }
 
 function extractTitleTag(html: string): string | null {
-  return /<title[^>]*>([^<]*)<\/title>/i.exec(html)?.[1]?.trim() || null;
+  const raw = /<title[^>]*>([^<]*)<\/title>/i.exec(html)?.[1]?.trim();
+  return raw ? decodeHtmlEntities(raw) : null;
 }
 
 function extractFavicon(html: string, baseUrl: URL): string | null {
@@ -89,9 +98,25 @@ function resolveMaybeRelative(value: string | null, baseUrl: URL): string | null
  * kontrol etmek yetmiyordu: herkese açık bir adres 127.0.0.1'e yönlendirip
  * yerel ağa istek attırabilirdi.
  */
+/**
+ * Host'un çözüldüğü adreslerden herhangi biri yerel/özel ise isteği engeller.
+ * Çözümleme ile isteğin kendisi arasında kalan kısa DNS rebinding penceresi
+ * kapatılamıyor (global `fetch` özel bir `lookup` almıyor); tek kullanıcılık
+ * yerel bir uygulamada kabul edilen artık risk.
+ */
+async function assertPublicHost(url: URL): Promise<void> {
+  const addresses = await lookup(url.hostname, { all: true });
+  if (addresses.length === 0) throw new Error("unresolved-host");
+  if (addresses.some((entry) => isBlockedAddress(entry.address))) {
+    throw new Error("private-address");
+  }
+}
+
 async function fetchFollowingSafeRedirects(url: URL): Promise<{ response: Response; finalUrl: URL }> {
   let current = url;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    // Her adım yeniden çözülüyor: yönlendirme zinciri de yerel ağa çıkamaz.
+    await assertPublicHost(current);
     const response = await fetch(current.toString(), {
       redirect: "manual",
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),

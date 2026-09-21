@@ -14,22 +14,36 @@ export const dynamic = "force-dynamic";
 export default async function IssuesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ project?: string; view?: string; cycle?: string }>;
+  searchParams: Promise<{ project?: string; view?: string; cycle?: string; open?: string }>;
 }) {
-  const { project: projectParam, view: viewId, cycle: cycleId } = await searchParams;
+  const {
+    project: projectParam,
+    view: viewId,
+    cycle: cycleId,
+    open: openId,
+  } = await searchParams;
 
   const projects = await getProjects();
   const project = resolveActiveProject(projects, projectParam);
   if (project.id !== projectParam) {
-    redirect(`/issues?project=${project.id}`);
+    // Diğer parametreler korunuyor: eskiden proje düzeltmesi `view`, `cycle` ve
+    // `open` değerlerini düşürüyordu (ör. kaydedilmiş bir görünüm linki).
+    const params = new URLSearchParams({ project: project.id });
+    if (viewId) params.set("view", viewId);
+    if (cycleId) params.set("cycle", cycleId);
+    if (openId) params.set("open", openId);
+    redirect(`/issues?${params.toString()}`);
   }
 
-  const [issues, users, labels, savedView, cycles, states] = await Promise.all([
+  // Önce cycle'lar: `getCycles` bitmiş cycle'ların issue'larını devrediyor.
+  // `Promise.all` içinde `getIssues` senkron olarak önce çalışıp devir öncesi
+  // atamaları okuyordu — devir günü sayfa eski cycle'ı gösteriyordu.
+  const cycles = await getCycles(project.id);
+  const [issues, users, labels, savedView, states] = await Promise.all([
     getIssues(project.id, cycleId),
     getUsers(),
     getLabels(),
     viewId ? getView(viewId) : Promise.resolve(null),
-    getCycles(project.id),
     getWorkflowStates(project.id),
   ]);
 
@@ -41,7 +55,9 @@ export default async function IssuesPage({
 
   return (
     <IssueWorkspace
-      key={`${project.id}:${cycleId ?? ""}`}
+      // `viewId` de anahtarda: iki kaydedilmiş görünüm arasında gezinirken
+      // (ör. geri/ileri) bileşen yeniden kurulmazsa eski filtreler kalıyordu.
+      key={`${project.id}:${cycleId ?? ""}:${viewId ?? ""}`}
       titleKey="nav.issues"
       breadcrumb={breadcrumb}
       projectId={project.id}

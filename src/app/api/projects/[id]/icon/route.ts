@@ -17,7 +17,10 @@ export async function GET(
   return new Response(Buffer.from(row.icon_data), {
     headers: {
       "Content-Type": row.icon_mime_type,
-      "Cache-Control": "public, max-age=31536000, immutable",
+      // İkon aynı URL'de değişebiliyor (yükle/kaldır); `immutable` ile tarayıcı
+      // eski görseli bir yıl boyunca gösteriyordu.
+      "Cache-Control": "no-cache",
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }

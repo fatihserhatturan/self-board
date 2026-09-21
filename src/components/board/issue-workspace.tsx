@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChartLine, ListFilter, ListTodo, SlidersHorizontal } from "lucide-react";
 import { Board } from "@/components/board/board";
 import { CreateIssueDialog } from "@/components/board/create-issue-dialog";
@@ -31,11 +31,13 @@ import { CycleSummaryPanel } from "@/components/cycles/cycle-summary-panel";
 import type { TranslationKey } from "@/lib/i18n/types";
 import type { BoardIssue, IssueLabel, Person } from "@/lib/data/issues";
 import type { Cycle, CycleSnapshot } from "@/lib/data/cycles";
+import type { Project } from "@/lib/data/projects";
 import type { SavedView } from "@/lib/data/views";
 import { countActiveFilters } from "@/lib/board/filter-summary";
 import { groupIssues } from "@/lib/board/issue-grouping";
 import type { WorkflowState } from "@/lib/board/workflow-config";
 import { WorkflowStatesProvider } from "@/components/board/workflow-states-provider";
+import { useProjectCycles } from "@/components/board/use-project-data";
 import { cycleLabel } from "@/lib/board/cycle-label";
 import { todayIsoDate } from "@/lib/board/cycle-status";
 import { useLocalStorageState } from "@/lib/use-local-storage-state";
@@ -62,6 +64,14 @@ export interface IssueWorkspaceProps {
   cycleSnapshots?: CycleSnapshot[];
   /** Aktif projenin durumları. `null` = projeler-arası görünüm (My Issues): sistem tipine göre gruplanır. */
   states?: WorkflowState[] | null;
+  /**
+   * Projeler-arası görünümde tüm projelerin durumları. Gruplama yine sistem
+   * tipine göre, ama dialog'lar ve sağ tık menüsü issue'nun kendi projesinin
+   * durumlarını göstermek için buna ihtiyaç duyuyor.
+   */
+  allStates?: WorkflowState[];
+  /** Projeler-arası görünümde yeni issue'nun hangi projeye açılacağı seçilebilsin diye. */
+  projects?: Project[];
   defaultAssigneeId?: string | null;
   initialView?: SavedView;
 }
@@ -77,12 +87,16 @@ export function IssueWorkspace({
   cycles = [],
   cycleSnapshots = [],
   states = null,
+  allStates,
+  projects,
   defaultAssigneeId,
   initialView,
 }: IssueWorkspaceProps) {
   const { t } = useLocale();
   const { activeProjectId } = useAppShell();
   const resolvedProjectId = projectId ?? activeProjectId ?? "";
+  /** Tek projeye bağlı olmayan görünüm (My Issues): durumlar ve cycle'lar issue başına çözülüyor. */
+  const crossProject = states === null;
   const today = useMemo(() => todayIsoDate(), []);
   const panelCycle = cycleId ? cycles.find((cycle) => cycle.id === cycleId) : undefined;
   const [cyclePanelOpen, setCyclePanelOpen] = useLocalStorageState(
@@ -93,9 +107,12 @@ export function IssueWorkspace({
   const [view, setView] = useState<TopBarView>(initialView?.layout ?? "list");
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [createProjectId, setCreateProjectId] = useState(resolvedProjectId);
 
   // Komut paletinden `?open={issueId}` ile gelindiğinde ilgili issue'yu ilk render'da açar.
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const openIssueId = searchParams.get("open");
   const initialOpenIssue = openIssueId
     ? (issues.find((issue) => issue.id === openIssueId) ?? null)
@@ -110,7 +127,7 @@ export function IssueWorkspace({
   );
 
   const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
-  const [viewOptions, setViewOptions] = useLocalStorageState<IssueViewOptions>(
+  const [storedViewOptions, setStoredViewOptions] = useLocalStorageState<IssueViewOptions>(
     "self-board:issues-view-options",
     DEFAULT_VIEW_OPTIONS,
     (v) => JSON.stringify(v),
@@ -123,13 +140,14 @@ export function IssueWorkspace({
     },
   );
 
-  // Kaydedilmiş bir view açıldığında, o view'ın anlık görüntüsünü kalıcı global
-  // tercihin üzerine bir kerelik uygular — Linear'daki gibi görünüm seçenekleri
-  // view'ın bir parçası olarak saklanıyor.
-  useEffect(() => {
-    if (initialView?.options) setViewOptions(initialView.options);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Kaydedilmiş bir görünüm açıkken seçenekler o görünümün parçası: yerel bir
+  // override'da tutuluyor. Önceden global tercihin üzerine yazılıyordu, yani
+  // bir görünümü bir kez açmak sonraki tüm sayfaların gruplamasını değiştiriyordu.
+  const [viewOverride, setViewOverride] = useState<IssueViewOptions | null>(
+    initialView?.options ?? null,
+  );
+  const viewOptions = viewOverride ?? storedViewOptions;
+  const setViewOptions = viewOverride ? setViewOverride : setStoredViewOptions;
 
   // Cycle paneli için Cmd/Ctrl+I — Linear'daki cycle sidebar kısayolunun karşılığı.
   useEffect(() => {
@@ -149,6 +167,17 @@ export function IssueWorkspace({
   function openDetail(issue: BoardIssue) {
     setDetailIssue(issue);
     setDetailOpen(true);
+  }
+
+  /** Dialog kapanınca `?open=` URL'de kalıyordu; sayfa yenilenince issue yeniden açılıyordu. */
+  function handleDetailOpenChange(next: boolean) {
+    setDetailOpen(next);
+    if (!next && searchParams.get("open")) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("open");
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname);
+    }
   }
 
   const filteredIssues = useMemo(() => {
@@ -206,8 +235,27 @@ export function IssueWorkspace({
 
   const activeFilterCount = countActiveFilters(filterCriteria);
 
+  // Projeler-arası görünümde durumlar ve cycle'lar tek bir projeye ait değil:
+  // dialog'lar seçilen ya da açılan issue'nun projesine göre kendi listesini
+  // alıyor. Önceden bu görünümde ikisi de boş geçiliyordu; durum seçici boş
+  // kalıyor, yeni issue ise durumsuz kaydedilmeye çalışılıyordu.
+  const contextStates = crossProject ? (allStates ?? []) : states;
+  const createStates = crossProject
+    ? contextStates.filter((state) => state.projectId === createProjectId)
+    : states;
+  const { data: crossCreateCycles } = useProjectCycles(
+    crossProject && createOpen ? createProjectId : null,
+  );
+  const detailProjectId = detailIssue?.projectId ?? null;
+  const detailStates = crossProject
+    ? contextStates.filter((state) => state.projectId === detailProjectId)
+    : states;
+  const { data: crossDetailCycles } = useProjectCycles(
+    crossProject && detailOpen ? detailProjectId : null,
+  );
+
   return (
-    <WorkflowStatesProvider states={states ?? []}>
+    <WorkflowStatesProvider states={contextStates}>
       <TopBar
         title={t(titleKey)}
         breadcrumb={breadcrumb}
@@ -257,16 +305,20 @@ export function IssueWorkspace({
             </PopoverContent>
           </Popover>
         }
+        // Kaydedilmiş görünümler projeye bağlı; projeler-arası bir filtreyi
+        // rastgele bir projeye kaydetmek açıldığında başka sonuç veriyordu.
         saveViewTrigger={
-          <SaveViewPopover
-            input={{
-              projectId: resolvedProjectId,
-              layout: view,
-              filters: filterCriteria,
-              options: viewOptions,
-            }}
-            loadedView={loadedView}
-          />
+          !crossProject && (
+            <SaveViewPopover
+              input={{
+                projectId: resolvedProjectId,
+                layout: view,
+                filters: filterCriteria,
+                options: viewOptions,
+              }}
+              loadedView={loadedView}
+            />
+          )
         }
         cyclePanelTrigger={
           panelCycle && (
@@ -332,23 +384,25 @@ export function IssueWorkspace({
       <CreateIssueDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        projectId={resolvedProjectId}
+        projectId={crossProject ? createProjectId : resolvedProjectId}
         users={users}
         labels={labels}
-        cycles={cycles}
-        states={states ?? []}
+        cycles={crossProject ? crossCreateCycles : cycles}
+        states={createStates}
         defaultAssigneeId={defaultAssigneeId}
         defaultCycleId={cycleId}
+        projects={crossProject ? projects : undefined}
+        onProjectIdChange={crossProject ? setCreateProjectId : undefined}
       />
 
       <IssueDetailDialog
         issue={detailIssue}
         open={detailOpen}
-        onOpenChange={setDetailOpen}
+        onOpenChange={handleDetailOpenChange}
         users={users}
         labels={labels}
-        cycles={cycles}
-        states={states ?? []}
+        cycles={crossProject ? crossDetailCycles : cycles}
+        states={detailStates}
       />
     </WorkflowStatesProvider>
   );

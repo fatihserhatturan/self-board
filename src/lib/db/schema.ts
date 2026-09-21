@@ -126,18 +126,114 @@ CREATE INDEX IF NOT EXISTS idx_cycles_project ON cycles(project_id, number);
 CREATE INDEX IF NOT EXISTS idx_states_project ON workflow_states(project_id, position);
 `;
 
-const LEGACY_CURRENT_USER_EMAIL = "turan.fatih@dgpaysit.com";
+
+/**
+ * Şema sürümü `PRAGMA user_version`'da tutuluyor. Sürüm 1, `ensure*`
+ * fonksiyonlarının kolon kontrolüyle yaptığı eski (sürümsüz) migration'ların
+ * tamamı — onlar idempotent olduğu için her açılışta çalışmaya devam ediyor.
+ * Bundan sonraki migration'lar `if (version < N)` bloklarıyla eklenir.
+ */
+export const SCHEMA_VERSION = 2;
 
 export function ensureSchema(db: DatabaseSync) {
-  db.exec(DDL_SQL);
-  ensureTeamsRemoved(db);
-  ensureProjectsAdded(db);
-  ensureProjectIconColumns(db);
-  ensureCyclesColumns(db);
-  ensureCurrentUserColumn(db);
-  ensureAttachmentIssueIdColumn(db);
-  ensureProjectIssueSeq(db);
-  ensureWorkflowStates(db);
+  // Tamamı tek transaction: SQLite'ta DDL de transaction'a dahil, yarıda kalan
+  // bir migration DB'yi karışık bir şemayla bırakmıyor. IMMEDIATE, aynı dosyayı
+  // açmış ikinci bir süreçle yazma yarışını baştan engelliyor.
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.exec(DDL_SQL);
+    ensureTeamsRemoved(db);
+    ensureProjectsAdded(db);
+    ensureProjectIconColumns(db);
+    ensureCyclesColumns(db);
+    ensureCurrentUserColumn(db);
+    ensureAttachmentIssueIdColumn(db);
+    ensureProjectIssueSeq(db);
+    ensureWorkflowStates(db);
+
+    const version = readUserVersion(db);
+    if (version < 2) repairIssueIntegrity(db);
+    if (version < SCHEMA_VERSION) db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+export function readUserVersion(db: DatabaseSync): number {
+  const row = db.prepare("PRAGMA user_version").get() as { user_version: number };
+  return Number(row.user_version);
+}
+
+/** Bir projedeki issue id'lerinin (`PRE-123`) en büyük sayısal soneki. */
+function maxIssueNumber(db: DatabaseSync, projectId: string): number {
+  const rows = db.prepare("SELECT id FROM issues WHERE project_id = ?").all(projectId) as {
+    id: string;
+  }[];
+  return rows.reduce((highest, row) => {
+    const match = /-(\d+)$/.exec(row.id);
+    const value = match ? Number(match[1]) : 0;
+    return value > highest ? value : highest;
+  }, 0);
+}
+
+/**
+ * Sürüm 2 — veri onarımı. `node:sqlite` foreign key'leri varsayılan olarak
+ * zorluyor, ama FK'ler ALTER ile eklenen kolonlarda eksik olabiliyor ve bu
+ * kısıtlar yalnızca var olmayan satırı yakalıyor, "başka projenin satırı"nı
+ * değil. Önceki sürümlerde doğrulanmayan girdiler şunları bırakabiliyordu:
+ * - Başka projeye ait ya da NULL `state_id` (INNER JOIN yüzünden görünmez issue).
+ * - Başka projeye ait `cycle_id`.
+ * - Projesi olmayan `workflow_states` (FK'siz eski DB'lerde).
+ * - Örnek veri COR-101…120 id'lerini kullanırken `issue_seq` 0'da kalıyordu;
+ *   101. issue birincil anahtar çakışmasıyla oluşturulamazdı.
+ */
+function repairIssueIntegrity(db: DatabaseSync) {
+  const projects = db.prepare("SELECT id, issue_seq FROM projects").all() as {
+    id: string;
+    issue_seq: number;
+  }[];
+
+  const countStates = db.prepare("SELECT COUNT(*) AS count FROM workflow_states WHERE project_id = ?");
+  const fallbackState = db.prepare(
+    `SELECT id FROM workflow_states WHERE project_id = ?
+     ORDER BY CASE WHEN type = 'backlog' THEN 0 ELSE 1 END, position ASC
+     LIMIT 1`,
+  );
+  const reassignStates = db.prepare(
+    `UPDATE issues SET state_id = ?
+     WHERE project_id = ?
+       AND (state_id IS NULL OR state_id NOT IN (SELECT id FROM workflow_states WHERE project_id = ?))`,
+  );
+  const clearForeignCycles = db.prepare(
+    `UPDATE issues SET cycle_id = NULL
+     WHERE project_id = ?
+       AND cycle_id IS NOT NULL
+       AND cycle_id NOT IN (SELECT id FROM cycles WHERE project_id = ?)`,
+  );
+  const updateSeq = db.prepare("UPDATE projects SET issue_seq = ? WHERE id = ?");
+
+  for (const project of projects) {
+    const { count } = countStates.get(project.id) as { count: number };
+    if (Number(count) === 0) seedProjectStates(db, project.id);
+
+    const fallback = fallbackState.get(project.id) as { id: string };
+    reassignStates.run(fallback.id, project.id, project.id);
+    clearForeignCycles.run(project.id, project.id);
+
+    const max = maxIssueNumber(db, project.id);
+    if (max > Number(project.issue_seq)) updateSeq.run(max, project.id);
+  }
+
+  // Issue'lar yeniden atandıktan SONRA: hâlâ bir issue'nun işaret ettiği durum
+  // silinirse FK kısıtı migration'ı — dolayısıyla uygulamanın açılışını — kırar.
+  db.exec(
+    `DELETE FROM workflow_states
+     WHERE project_id NOT IN (SELECT id FROM projects)
+       AND id NOT IN (SELECT state_id FROM issues WHERE state_id IS NOT NULL)`,
+  );
 }
 
 /** Bir projeye varsayılan durumları basar ve `legacyStatus -> id` eşlemesini döner. */
@@ -273,16 +369,9 @@ function ensureProjectIssueSeq(db: DatabaseSync) {
   db.exec("ALTER TABLE projects ADD COLUMN issue_seq INTEGER NOT NULL DEFAULT 0");
 
   const projects = db.prepare("SELECT id FROM projects").all() as { id: string }[];
-  const selectIds = db.prepare("SELECT id FROM issues WHERE project_id = ?");
   const updateSeq = db.prepare("UPDATE projects SET issue_seq = ? WHERE id = ?");
   for (const project of projects) {
-    const rows = selectIds.all(project.id) as { id: string }[];
-    const max = rows.reduce((highest, row) => {
-      const match = /-(\d+)$/.exec(row.id);
-      const value = match ? Number(match[1]) : 0;
-      return value > highest ? value : highest;
-    }, 0);
-    updateSeq.run(max, project.id);
+    updateSeq.run(maxIssueNumber(db, project.id), project.id);
   }
 }
 
@@ -303,9 +392,8 @@ const DEFAULT_PROJECT = {
  * sabit bir DEFAULT hem de REFERENCES tanımlanmasına izin vermiyor ("Cannot
  * add a REFERENCES column with non-NULL default value") — bu yüzden migrate
  * edilen DB'lerde project_id, REFERENCES olmadan sade `TEXT NOT NULL DEFAULT
- * 'core'` olarak ekleniyor. Referential integrity zaten `PRAGMA foreign_keys`
- * hiç açılmadığı için hiçbir yerde runtime'da uygulanmıyor; deleteProject()
- * cascade'i elle yapıyor, tıpkı deleteIssue/deleteLabel gibi.
+ * 'core'` olarak ekleniyor. Bu kolonda FK kısıtı olmadığı için proje silme
+ * temizliği `lib/db/cascade.ts` içinde açıkça yapılıyor.
  */
 function ensureProjectsAdded(db: DatabaseSync) {
   const { count } = db.prepare("SELECT COUNT(*) AS count FROM projects").get() as {
@@ -402,9 +490,10 @@ function ensureTeamsRemoved(db: DatabaseSync) {
 
 /**
  * `is_current` kolonu bu tabloya sonradan eklendi. `CREATE TABLE IF NOT EXISTS`
- * var olan tabloları değiştirmediği için, önceki sürümlerden gelen DB dosyalarında
- * kolonu ekleyip eski sabit CURRENT_USER e-postasıyla eşleşen satırı "ben" olarak
- * işaretliyoruz — kullanıcı elle bir şey yapmadan sürekliliği korur.
+ * var olan tabloları değiştirmediği için önceki sürümlerden gelen DB dosyalarında
+ * kolon ekleniyor. Hiçbir satır "ben" değilse ilk kullanıcı işaretleniyor:
+ * `getCurrentUser()` null dönerse My Issues boş kalır ve profil sayfası
+ * düzenlenecek bir kayıt bulamaz.
  */
 function ensureCurrentUserColumn(db: DatabaseSync) {
   const columns = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
@@ -413,10 +502,11 @@ function ensureCurrentUserColumn(db: DatabaseSync) {
     db.exec("ALTER TABLE users ADD COLUMN is_current INTEGER NOT NULL DEFAULT 0");
   }
 
-  db.prepare(
+  db.exec(
     `UPDATE users SET is_current = 1
-     WHERE email = ? AND NOT EXISTS (SELECT 1 FROM users WHERE is_current = 1)`,
-  ).run(LEGACY_CURRENT_USER_EMAIL);
+     WHERE id = (SELECT id FROM users ORDER BY rowid LIMIT 1)
+       AND NOT EXISTS (SELECT 1 FROM users WHERE is_current = 1)`,
+  );
 }
 
 /**
@@ -475,6 +565,13 @@ export function seedIfEmpty(db: DatabaseSync) {
       );
       for (const labelId of issue.labelIds) insertIssueLabel.run(issue.id, labelId);
     }
+
+    // Sayaç örnek id'lerin üstünden başlamalı; aksi halde yeni issue'lar
+    // COR-1'den sayıp COR-101'de örnek veriyle çakışırdı.
+    db.prepare("UPDATE projects SET issue_seq = ? WHERE id = ?").run(
+      maxIssueNumber(db, DEFAULT_PROJECT.id),
+      DEFAULT_PROJECT.id,
+    );
 
     db.exec("COMMIT");
   } catch (error) {

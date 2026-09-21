@@ -21,7 +21,7 @@ interface NavCommand {
 }
 
 export function CommandPalette() {
-  const { commandOpen, setCommandOpen, issues, activeProjectId, setActiveProjectId } =
+  const { commandOpen, setCommandOpen, issueIndex, activeProjectId, setActiveProjectId } =
     useAppShell();
   const { t } = useLocale();
   const router = useRouter();
@@ -54,7 +54,7 @@ export function CommandPalette() {
           ))}
         </CommandGroup>
         <CommandGroup heading={t("commandPalette.group.issues")}>
-          {issues.map((issue) => (
+          {issueIndex.map((issue) => (
             <CommandItem
               key={issue.id}
               value={`${issue.id} ${issue.title}`}

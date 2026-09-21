@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSyncedState } from "@/lib/use-synced-state";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Layers, Trash2 } from "lucide-react";
@@ -25,7 +26,7 @@ export interface ViewsContentProps {
 export function ViewsContent({ projectId, projectName, views: initialViews }: ViewsContentProps) {
   const { t } = useLocale();
   const router = useRouter();
-  const [views, setViews] = useState(initialViews);
+  const [views, setViews] = useSyncedState(initialViews);
   const [pendingDelete, setPendingDelete] = useState<SavedView | null>(null);
 
   async function handleRename(view: SavedView, name: string) {

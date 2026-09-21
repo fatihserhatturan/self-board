@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import type { InputHTMLAttributes, ReactNode } from "react";
+import type { InputHTMLAttributes, ReactNode, Ref } from "react";
 import { cn } from "@/lib/utils";
 
 const inputVariants = cva(
@@ -28,6 +28,8 @@ export interface InputProps
     VariantProps<typeof inputVariants> {
   leadingIcon?: ReactNode;
   trailingIcon?: ReactNode;
+  /** React 19'da `ref` sıradan bir prop; `forwardRef` sarmalayıcısına gerek yok. */
+  ref?: Ref<HTMLInputElement>;
 }
 
 export function Input({

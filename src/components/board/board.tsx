@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -65,6 +65,7 @@ function currentGroupId(groups: IssueGroup[], issueId: string): string | null {
 export function Board({ groups, groupBy, onOpenIssue, viewOptions }: BoardProps) {
   const { t } = useLocale();
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [activeId, setActiveId] = useState<string | null>(null);
   // Sürükleme sırasında kartı hedef sütunda göstermek için yalnızca bu eşleme
   // tutuluyor; grupların kendisi sunucudan geliyor ve `router.refresh()` ile
@@ -72,15 +73,21 @@ export function Board({ groups, groupBy, onOpenIssue, viewOptions }: BoardProps)
   const [movedTo, setMovedTo] = useState<Record<string, string>>({});
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
-  const displayGroups: IssueGroup[] =
-    Object.keys(movedTo).length === 0
-      ? groups
-      : groups.map((group) => ({
-          ...group,
-          issues: groups
-            .flatMap((source) => source.issues)
-            .filter((issue) => (movedTo[issue.id] ?? currentGroupId(groups, issue.id)) === group.id),
-        }));
+  // Her grup için tüm issue listesini yeniden taramak yerine tek bir
+  // `issue -> grup` eşlemesi kuruluyor; sütun sayısıyla çarpan tarama kalktı.
+  const displayGroups: IssueGroup[] = useMemo(() => {
+    if (Object.keys(movedTo).length === 0) return groups;
+
+    const all = groups.flatMap((group) => group.issues);
+    const groupIdByIssue = new Map<string, string>();
+    for (const group of groups) {
+      for (const issue of group.issues) groupIdByIssue.set(issue.id, group.id);
+    }
+    return groups.map((group) => ({
+      ...group,
+      issues: all.filter((issue) => (movedTo[issue.id] ?? groupIdByIssue.get(issue.id)) === group.id),
+    }));
+  }, [groups, movedTo]);
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id));
@@ -98,18 +105,39 @@ export function Board({ groups, groupBy, onOpenIssue, viewOptions }: BoardProps)
 
     setMovedTo((prev) => ({ ...prev, [issueId]: targetGroupId }));
 
-    const result = await applyDrop(groupBy, issueId, targetGroupId);
-    if (!result.ok) {
+    function rollback() {
       setMovedTo((prev) => {
         const next = { ...prev };
         delete next[issueId];
         return next;
       });
       toast.error(t("toast.issue.updateError"));
+    }
+
+    let result: { ok: boolean };
+    try {
+      result = await applyDrop(groupBy, issueId, targetGroupId);
+    } catch {
+      rollback();
       return;
     }
-    setMovedTo({});
-    router.refresh();
+    if (!result.ok) {
+      rollback();
+      return;
+    }
+
+    // İyimser konum, sunucu verisi gelene kadar korunuyor: `router.refresh()`
+    // ile aynı transition'da temizlendiği için kart eski sütuna geri zıplamıyor.
+    // Yalnızca bu issue siliniyor — eş zamanlı başka bir sürükleme varsa onunki
+    // kalmalı (önceden tüm eşleme sıfırlanıyordu).
+    startTransition(() => {
+      router.refresh();
+      setMovedTo((prev) => {
+        const next = { ...prev };
+        delete next[issueId];
+        return next;
+      });
+    });
   }
 
   const activeIssue = displayGroups

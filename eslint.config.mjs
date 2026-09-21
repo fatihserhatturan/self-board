@@ -15,6 +15,11 @@ const eslintConfig = defineConfig([
     "dist-electron/**",
     "release/**",
   ]),
+  {
+    // electron-builder hook'ları derlenmeden, CommonJS olarak yükleniyor.
+    files: ["electron/scripts/*.js"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
 ]);
 
 export default eslintConfig;

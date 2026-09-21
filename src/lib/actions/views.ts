@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client";
+import { isValidLayout, projectExists } from "@/lib/db/validation";
 import type { ActionResult } from "@/lib/actions/issues";
 import type { SavedView } from "@/lib/data/views";
 import type { IssueFilterCriteria } from "@/components/board/issue-filter-panel";
@@ -19,8 +20,10 @@ export interface CreateViewInput {
 export async function createView(input: CreateViewInput): Promise<ActionResult<SavedView>> {
   const trimmed = input.name.trim();
   if (!trimmed) return { ok: false, error: "name-required" };
+  if (!isValidLayout(input.layout)) return { ok: false, error: "layout-invalid" };
 
   const db = getDb();
+  if (!projectExists(db, input.projectId)) return { ok: false, error: "project-not-found" };
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
   db.prepare(
@@ -57,6 +60,7 @@ export async function updateView(
 ): Promise<ActionResult<{ id: string }>> {
   const trimmed = input.name.trim();
   if (!trimmed) return { ok: false, error: "name-required" };
+  if (!isValidLayout(input.layout)) return { ok: false, error: "layout-invalid" };
 
   const db = getDb();
   const result = db

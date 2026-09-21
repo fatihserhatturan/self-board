@@ -1,6 +1,17 @@
 import type { DatabaseSync } from "node:sqlite";
 
 const ATTACHMENT_URL_RE = /\/api\/attachments\/([a-f0-9-]{36})/g;
+const ORPHAN_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Hiçbir issue'ya bağlanmamış (kaydedilmeden bırakılmış) attachment'ları belirli
+ * bir yaştan sonra siler. Yeni yüklemede ve uygulama açılışında çalışıyor —
+ * yalnızca yüklemeye bağlıyken, bir daha görsel yüklenmezse hiç çalışmıyordu.
+ */
+export function pruneOrphanedAttachments(db: DatabaseSync, now = Date.now()): void {
+  const cutoff = new Date(now - ORPHAN_MAX_AGE_MS).toISOString();
+  db.prepare("DELETE FROM attachments WHERE issue_id IS NULL AND created_at < ?").run(cutoff);
+}
 
 /** Bir HTML gövdesinde referans edilen attachment id'lerini çıkarır (Tiptap `<img src="...">`). */
 export function extractAttachmentIds(html: string): string[] {

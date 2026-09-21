@@ -6,22 +6,14 @@ import {
   DEFAULT_PREFERENCES,
   HOME_VIEWS,
   STATUS_TYPES,
+  readEnum,
   type Preferences,
 } from "@/lib/preferences-config";
 
 /**
- * Depodan okunan ham değeri doğrular. Kullanıcı DB'yi elle düzenlemiş ya da
- * eski bir sürümden kalmış geçersiz bir değer sayfayı çökertmesin diye her
- * anahtar varsayılana düşebiliyor — `lib/data/views.ts`'teki JSON okuma
- * desenindeki aynı gerekçe.
- */
-function readEnum<T extends string>(raw: string | undefined, allowed: T[], fallback: T): T {
-  return allowed.includes(raw as T) ? (raw as T) : fallback;
-}
-
-/**
  * Tercihler. `cache()` ile sarılı: kök layout ve sayfalar aynı istekte bunu
- * birden çok kez okuyor.
+ * birden çok kez okuyor. Doğrulama (`readEnum`) yazma yoluyla paylaşılıyor —
+ * bkz. `lib/preferences-config.ts`.
  */
 export const getPreferences = cache(async function getPreferences(): Promise<Preferences> {
   const db = getDb();

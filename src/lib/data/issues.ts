@@ -179,6 +179,29 @@ export const getIssues = cache(async function getIssues(
   }));
 });
 
+/** Komut paletinin arama listesi. */
+export interface IssueIndexEntry {
+  id: string;
+  title: string;
+  projectId: string;
+}
+
+/**
+ * Yalnızca arama için gereken alanlar. `(app)` layout'u komut paleti uğruna her
+ * gezinmede bütün issue'ları — HTML açıklamalarıyla birlikte — istemciye
+ * gönderiyordu; bu sorgu aynı işi satır başına üç alanla yapıyor.
+ */
+export const getIssueIndex = cache(async function getIssueIndex(): Promise<IssueIndexEntry[]> {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT id, title, project_id FROM issues ORDER BY created_at DESC")
+    .all();
+  return rows.map((row) => {
+    const r = row as Record<string, unknown>;
+    return { id: asString(r.id), title: asString(r.title), projectId: asString(r.project_id) };
+  });
+});
+
 export const getUsers = cache(async function getUsers(): Promise<Person[]> {
   const db = getDb();
   const rows = db.prepare("SELECT id, name, email FROM users ORDER BY name ASC").all();

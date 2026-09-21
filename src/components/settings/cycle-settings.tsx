@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSyncedState } from "@/lib/use-synced-state";
 import {
   Select,
   SelectContent,
@@ -28,7 +29,7 @@ export interface CycleSettingsProps {
 /** Cycle süresi daha önce `/cycles` üst çubuğunda gizliydi; ayarlar bunu proje başına tek yerde topluyor. */
 export function CycleSettings({ projects: initialProjects }: CycleSettingsProps) {
   const { t } = useLocale();
-  const [projects, setProjects] = useState(initialProjects);
+  const [projects, setProjects] = useSyncedState(initialProjects);
   const [savingId, setSavingId] = useState<string | null>(null);
 
   async function handleChange(project: Project, weeks: string) {

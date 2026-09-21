@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useSyncedState } from "@/lib/use-synced-state";
 import { useRouter } from "next/navigation";
 import { FolderKanban, Pencil, Trash2, X } from "lucide-react";
 import { TopBar } from "@/components/app-shell/top-bar";
@@ -37,7 +38,7 @@ export function ProjectsContent({ projects: initialProjects }: ProjectsContentPr
   const { t } = useLocale();
   const router = useRouter();
   const { setActiveProjectId } = useAppShell();
-  const [projects, setProjects] = useState(initialProjects);
+  const [projects, setProjects] = useSyncedState(initialProjects);
   // Cascade bir silme için 3 saniyelik çift tıklama yetersizdi — ne silineceğini
   // söyleyen ortak onay dialog'una geçildi.
   const [pendingDelete, setPendingDelete] = useState<Project | null>(null);
@@ -46,6 +47,7 @@ export function ProjectsContent({ projects: initialProjects }: ProjectsContentPr
   const [newColor, setNewColor] = useState<LabelColor>("grey");
   const [creating, setCreating] = useState(false);
   const iconInputRef = useRef<HTMLInputElement>(null);
+  const newNameInputRef = useRef<HTMLInputElement>(null);
   const iconUploadTargetId = useRef<string | null>(null);
 
   function handleSwitch(project: Project) {
@@ -155,7 +157,9 @@ export function ProjectsContent({ projects: initialProjects }: ProjectsContentPr
       <TopBar
         title={t("nav.projects")}
         primaryActionLabel={t("page.projects.newAction")}
-        primaryActionDisabled
+        // Düğme "Yakında" olarak kapalıydı, oysa oluşturma formu sayfanın
+        // altında duruyor: odağı oraya taşıyor.
+        onPrimaryAction={() => newNameInputRef.current?.focus()}
       />
 
       <input
@@ -233,6 +237,7 @@ export function ProjectsContent({ projects: initialProjects }: ProjectsContentPr
             </Label>
             <Input
               id="new-project-name"
+              ref={newNameInputRef}
               className="flex-1"
               placeholder={t("page.projects.namePlaceholder")}
               value={newName}
