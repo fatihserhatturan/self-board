@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { syncIssueAttachments } from "@/lib/db/attachment-links";
+import { MODULE_REGISTRY } from "@/lib/modules/registry";
 
 /**
  * Silme temizliği açıkça, çocuk satırlardan başlayarak yapılıyor. `node:sqlite`
@@ -49,6 +50,17 @@ export function deleteProjectCascade(db: DatabaseSync, projectId: string): boole
     ).run(projectId);
     db.prepare("DELETE FROM cycles WHERE project_id = ?").run(projectId);
     db.prepare("DELETE FROM workflow_states WHERE project_id = ?").run(projectId);
+
+    // Proje bazlı modüllerin kendi verisi — registry'den türetilir, yeni bir
+    // modül eklendiğinde bu dosyaya elle satır eklemek gerekmez. Döngü
+    // değişkeni `module` değil: Next'in lint kuralı o adı (Node'un
+    // CommonJS `module` global'iyle karışmasın diye) ayırma/const bağlamında yasaklıyor.
+    for (const registeredModule of MODULE_REGISTRY) {
+      if (registeredModule.scope === "per-project") {
+        registeredModule.onProjectDeleted?.(db, projectId);
+      }
+    }
+
     const result = db.prepare("DELETE FROM projects WHERE id = ?").run(projectId);
     return Number(result.changes) > 0;
   });

@@ -11,6 +11,7 @@ import {
   Keyboard,
   type LucideIcon,
   Palette,
+  Puzzle,
   RotateCw,
   SlidersHorizontal,
   Tag,
@@ -59,6 +60,7 @@ const NAV_GROUPS: SettingsNavGroup[] = [
       { href: "/settings/labels", labelKey: "settings.labels.title", icon: Tag },
       { href: "/settings/members", labelKey: "settings.members.title", icon: Users },
       { href: "/settings/cycles", labelKey: "settings.cycles.title", icon: RotateCw },
+      { href: "/settings/modules", labelKey: "settings.modules.title", icon: Puzzle },
     ],
   },
   {

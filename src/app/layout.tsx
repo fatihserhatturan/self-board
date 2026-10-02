@@ -3,9 +3,11 @@ import { cookies } from "next/headers";
 import { Inter } from "next/font/google";
 import { LOCALE_COOKIE, parseLocale } from "@/lib/i18n/types";
 import { LocaleProvider } from "@/components/locale-provider";
+import { ModulesProvider } from "@/components/modules-provider";
 import { PreferencesProvider } from "@/components/preferences-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toast";
+import { getEnabledModuleIds } from "@/lib/data/modules";
 import { getPreferences } from "@/lib/data/preferences";
 import "./globals.css";
 
@@ -25,7 +27,11 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const [preferences, cookieStore] = await Promise.all([getPreferences(), cookies()]);
+  const [preferences, enabledModuleIds, cookieStore] = await Promise.all([
+    getPreferences(),
+    getEnabledModuleIds(),
+    cookies(),
+  ]);
   // Dil cookie'den: ilk boyama doğru dille geliyor, dil değişimi de sunucu
   // render'ıyla tutarlı kalıyor.
   const locale = parseLocale(cookieStore.get(LOCALE_COOKIE)?.value);
@@ -35,12 +41,16 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="h-full flex flex-col font-sans antialiased">
         <LocaleProvider initialLocale={locale}>
           <PreferencesProvider preferences={preferences}>
-            {/* `enableSystem`: işletim sistemi temasını izleyen üçüncü bir seçenek —
-                ayarlarda "Sistem" olarak sunuluyor. Varsayılan hâlâ koyu tema. */}
-            <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem>
-              {children}
-              <Toaster />
-            </ThemeProvider>
+            {/* Etkin modüller burada: hem `(app)` hem `settings` ağacının
+                sidebar/nav'ı buna ihtiyaç duyuyor, tıpkı tercihler gibi. */}
+            <ModulesProvider enabledModuleIds={enabledModuleIds}>
+              {/* `enableSystem`: işletim sistemi temasını izleyen üçüncü bir seçenek —
+                  ayarlarda "Sistem" olarak sunuluyor. Varsayılan hâlâ koyu tema. */}
+              <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem>
+                {children}
+                <Toaster />
+              </ThemeProvider>
+            </ModulesProvider>
           </PreferencesProvider>
         </LocaleProvider>
       </body>

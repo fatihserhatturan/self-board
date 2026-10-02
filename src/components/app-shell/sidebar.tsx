@@ -21,6 +21,7 @@ import { SidebarNavItem } from "@/components/app-shell/sidebar-nav-item";
 import { WorkspaceSwitcher } from "@/components/app-shell/workspace-switcher";
 import { useAppShell } from "@/components/app-shell/app-shell-provider";
 import { useLocale } from "@/components/locale-provider";
+import { useModules } from "@/components/modules-provider";
 import { WORKSPACE } from "@/lib/app-shell-data";
 import type { Person } from "@/lib/data/issues";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ export function Sidebar({ currentUser }: SidebarProps) {
   const { sidebarCollapsed, toggleSidebar, setCommandOpen, setCreateIssueOpen, activeProjectId } =
     useAppShell();
   const { t } = useLocale();
+  const { enabledModules } = useModules();
 
   return (
     <aside
@@ -100,6 +102,28 @@ export function Sidebar({ currentUser }: SidebarProps) {
                 label={t("nav.cycles")}
               />
             </div>
+
+            {/* Etkin opsiyonel modüller (bkz. lib/modules/registry.ts). Hiç
+                modül etkin değilse (v1'de hep böyle) bölüm hiç render edilmez. */}
+            {enabledModules.length > 0 && (
+              <div className="flex flex-col gap-0.5">
+                <p className="px-2 pb-1 text-micro font-medium uppercase tracking-wide text-text-tertiary">
+                  {t("nav.section.modules")}
+                </p>
+                {enabledModules.map((module) => (
+                  <SidebarNavItem
+                    key={module.id}
+                    href={
+                      module.scope === "per-project"
+                        ? `${module.nav.href}?project=${activeProjectId ?? ""}`
+                        : module.nav.href
+                    }
+                    icon={module.icon}
+                    label={t(module.nav.labelKey)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </ScrollArea>
 

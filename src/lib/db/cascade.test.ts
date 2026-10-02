@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { BookOpen } from "lucide-react";
 import { deleteIssueCascade, deleteNoteCascade, deleteProjectCascade } from "@/lib/db/cascade";
 import { createTestDb } from "@/lib/db/test-db";
+import { MODULE_REGISTRY, type ModuleDefinition } from "@/lib/modules/registry";
 
 const ATTACHMENT_ID = "0f2b1c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
 
@@ -23,6 +25,47 @@ describe("deleteProjectCascade", () => {
   it("olmayan proje için false döner", () => {
     const db = createTestDb();
     assert.equal(deleteProjectCascade(db, "missing"), false);
+  });
+
+  it("per-project modüllerin onProjectDeleted hook'unu çağırır, global modüllerinkini çağırmaz", () => {
+    const db = createTestDb();
+    let perProjectCalledWith: string | null = null;
+    let globalCalled = false;
+
+    const fakeModule = (overrides: Partial<ModuleDefinition>): ModuleDefinition => ({
+      id: "test-module",
+      scope: "per-project",
+      icon: BookOpen,
+      nameKey: "nav.myIssues",
+      descriptionKey: "nav.myIssues",
+      nav: { href: "/my-issues", labelKey: "nav.myIssues" },
+      ...overrides,
+    });
+
+    MODULE_REGISTRY.push(
+      fakeModule({
+        id: "test-per-project",
+        scope: "per-project",
+        onProjectDeleted: (_db, projectId) => {
+          perProjectCalledWith = projectId;
+        },
+      }),
+      fakeModule({
+        id: "test-global",
+        scope: "global",
+        onProjectDeleted: () => {
+          globalCalled = true;
+        },
+      }),
+    );
+    try {
+      deleteProjectCascade(db, "core");
+    } finally {
+      MODULE_REGISTRY.length -= 2;
+    }
+
+    assert.equal(perProjectCalledWith, "core");
+    assert.equal(globalCalled, false);
   });
 });
 

@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { seedIssues, seedLabels, seedPeople } from "@/lib/db/seed-data";
 import { DEFAULT_STATES } from "@/lib/board/workflow-config";
+import { MODULE_REGISTRY } from "@/lib/modules/registry";
 
 const DDL_SQL = `
 CREATE TABLE IF NOT EXISTS users (
@@ -121,10 +122,25 @@ CREATE TABLE IF NOT EXISTS app_settings (
   value TEXT NOT NULL
 );
 
+-- Opsiyonel modüllerin (bkz. lib/modules/registry.ts) açık/kapalı durumu.
+-- Satırı olmayan bir id kapalı sayılır — modüller varsayılan hep kapalı gelir.
+CREATE TABLE IF NOT EXISTS modules (
+  id      TEXT PRIMARY KEY,
+  enabled INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE INDEX IF NOT EXISTS idx_issue_notes_issue ON issue_notes(issue_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_cycles_project ON cycles(project_id, number);
 CREATE INDEX IF NOT EXISTS idx_states_project ON workflow_states(project_id, position);
 `;
+
+/**
+ * Her modülün kendi tablo(lar)ının DDL'i (varsa) ana `DDL_SQL`'e eklenir.
+ * Modül kapalıyken de tablo her zaman kurulur (bkz. registry.ts'teki gerekçe)
+ * — bu yüzden `SCHEMA_VERSION` artırmaya ya da versiyonlu bir migration'a
+ * gerek yok, `CREATE TABLE IF NOT EXISTS` zaten idempotent.
+ */
+const MODULE_DDL_SQL = MODULE_REGISTRY.map((module) => module.ddl ?? "").join("\n");
 
 
 /**
@@ -141,7 +157,7 @@ export function ensureSchema(db: DatabaseSync) {
   // açmış ikinci bir süreçle yazma yarışını baştan engelliyor.
   db.exec("BEGIN IMMEDIATE");
   try {
-    db.exec(DDL_SQL);
+    db.exec(DDL_SQL + MODULE_DDL_SQL);
     ensureTeamsRemoved(db);
     ensureProjectsAdded(db);
     ensureProjectIconColumns(db);
