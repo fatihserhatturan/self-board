@@ -1,7 +1,14 @@
 import type { Route } from "next";
 import type { DatabaseSync } from "node:sqlite";
-import type { LucideIcon } from "lucide-react";
+import { BookOpen, type LucideIcon } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n/types";
+import {
+  WIKI_ATTACHMENT_REFS_SQL,
+  WIKI_DDL,
+  WIKI_MODULE_ID,
+  WIKI_TABLES,
+  deleteWikiProjectData,
+} from "@/lib/modules/wiki/schema";
 
 /**
  * Uygulamanın çekirdeğine ek, varsayılan olarak KAPALI gelen opsiyonel
@@ -15,6 +22,13 @@ import type { TranslationKey } from "@/lib/i18n/types";
  * — bu yüzden `nameKey`/`descriptionKey` gibi alanlar düz string değil
  * `TranslationKey`: var olmayan bir çeviri anahtarı yazılırsa derleme zamanında
  * hata verir (bkz. `lib/i18n/types.ts` — `TranslationKey = keyof typeof tr`).
+ *
+ * **Import kuralı:** bu dosya client bundle'ına giriyor. Bir modülün buradan
+ * import edilen dosyası (ör. `modules/wiki/schema.ts`) yalnız `import type`,
+ * saf sabitler ve `db` parametresi alan saf fonksiyonlar içerebilir —
+ * `@/lib/db/*` ya da `node:*` runtime import'u yasak. Hem `node:sqlite`
+ * tarayıcı chunk'ına sızardı, hem de `attachment-links.ts` → registry →
+ * modül → `attachment-links.ts` import döngüsü oluşurdu.
  *
  * Etkinleştirme yalnızca GÖRÜNÜRLÜĞÜ kontrol eder, bir "kurulum" akışı değil:
  * kapatmak veriyi silmez, tekrar açılınca önceki veri yerinde durur (bkz.
@@ -55,11 +69,51 @@ export interface ModuleDefinition {
    * eklemek gerekmez.
    */
   onProjectDeleted?: (db: DatabaseSync, projectId: string) => void;
+  /**
+   * Modülün tabloları, ebeveyn önce sıralı. Yedekleme/geri yükleme listeleri
+   * (`lib/db/restore.ts`, `lib/actions/backup.ts`) bunu okuyor — listede
+   * olmayan bir tablo geri yüklemede eski hâliyle kalır, olmayan projelere ve
+   * eklere işaret eden veri bırakırdı.
+   */
+  tables?: readonly string[];
+  /**
+   * Modülün referans verdiği attachment id'lerini döndüren bir SELECT. Core'un
+   * ek temizliği (`lib/db/attachment-links.ts`) bu id'leri silmez: aksi halde
+   * hiçbir issue'ya bağlı olmayan modül görselleri 24 saat sonra yetim sayılıp
+   * silinirdi.
+   */
+  attachmentRefsSql?: string;
 }
 
 /**
- * v1: hiç modül yok. Bir modül eklendiğinde buraya bir `ModuleDefinition`
- * eklenir — sidebar, Ayarlar > Modüller sayfası, şema ve proje silme akışı
- * sıfır ek değişiklikle onu keşfeder.
+ * Bir modülün komut paletinde aranabilir kaydı (ör. bir wiki sayfası). Core
+ * yalnız bu şekli bilir; kaydı üreten sorgu modülün kendi sunucu kodunda
+ * (`lib/modules/server.ts`).
  */
-export const MODULE_REGISTRY: ModuleDefinition[] = [];
+export interface ModuleSearchEntry {
+  moduleId: string;
+  id: string;
+  title: string;
+  projectId: string | null;
+  href: Route;
+}
+
+/**
+ * Kayıtlı modüller. Bir modül eklendiğinde buraya bir `ModuleDefinition`
+ * eklenir — sidebar, Ayarlar > Modüller sayfası, şema, proje silme akışı,
+ * yedekleme ve ek temizliği onu kendiliğinden keşfeder.
+ */
+export const MODULE_REGISTRY: ModuleDefinition[] = [
+  {
+    id: WIKI_MODULE_ID,
+    scope: "per-project",
+    icon: BookOpen,
+    nameKey: "modules.wiki.name",
+    descriptionKey: "modules.wiki.description",
+    nav: { href: "/wiki", labelKey: "nav.wiki" },
+    ddl: WIKI_DDL,
+    tables: WIKI_TABLES,
+    attachmentRefsSql: WIKI_ATTACHMENT_REFS_SQL,
+    onProjectDeleted: deleteWikiProjectData,
+  },
+];

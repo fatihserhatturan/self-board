@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { BookOpen } from "lucide-react";
 import { deleteIssueCascade, deleteNoteCascade, deleteProjectCascade } from "@/lib/db/cascade";
-import { createTestDb } from "@/lib/db/test-db";
+import { createTestDb, insertTestAttachment, withFakeAttachmentModule } from "@/lib/db/test-db";
 import { MODULE_REGISTRY, type ModuleDefinition } from "@/lib/modules/registry";
 
 const ATTACHMENT_ID = "0f2b1c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
@@ -67,6 +67,19 @@ describe("deleteProjectCascade", () => {
     assert.equal(perProjectCalledWith, "core");
     assert.equal(globalCalled, false);
   });
+
+  it("bir modülün de kullandığı issue ekini silmez, FK hatası vermez", () => {
+    const db = createTestDb();
+    insertTestAttachment(db, ATTACHMENT_ID, { issueId: "COR-101" });
+
+    withFakeAttachmentModule([db], (addRef) => {
+      addRef(db, ATTACHMENT_ID);
+      assert.equal(deleteProjectCascade(db, "core"), true);
+    });
+
+    const row = db.prepare("SELECT issue_id FROM attachments WHERE id = ?").get(ATTACHMENT_ID);
+    assert.deepEqual({ ...(row as object) }, { issue_id: null });
+  });
 });
 
 describe("deleteIssueCascade", () => {
@@ -78,6 +91,24 @@ describe("deleteIssueCascade", () => {
     assert.equal(deleteIssueCascade(db, "COR-101"), true);
     assert.equal(total(db, "SELECT COUNT(*) AS total FROM issue_labels WHERE issue_id = 'COR-101'"), 0);
     assert.equal(total(db, "SELECT COUNT(*) AS total FROM issue_notes WHERE issue_id = 'COR-101'"), 0);
+  });
+
+  it("issue'nun ekini siler, modülün de kullandığını yalnız ayırır", () => {
+    const db = createTestDb();
+    const shared = "2b2b1c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
+    insertTestAttachment(db, ATTACHMENT_ID, { issueId: "COR-101" });
+    insertTestAttachment(db, shared, { issueId: "COR-101" });
+
+    withFakeAttachmentModule([db], (addRef) => {
+      addRef(db, shared);
+      assert.equal(deleteIssueCascade(db, "COR-101"), true);
+    });
+
+    assert.equal(total(db, `SELECT COUNT(*) AS total FROM attachments WHERE id = '${ATTACHMENT_ID}'`), 0);
+    assert.equal(
+      total(db, `SELECT COUNT(*) AS total FROM attachments WHERE id = '${shared}' AND issue_id IS NULL`),
+      1,
+    );
   });
 });
 

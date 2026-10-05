@@ -1,16 +1,46 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { DatabaseSync, SQLInputValue } from "node:sqlite";
+import { MODULE_REGISTRY } from "@/lib/modules/registry";
 
 const ATTACHMENT_URL_RE = /\/api\/attachments\/([a-f0-9-]{36})/g;
 const ORPHAN_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * Modüllerin referans verdiği attachment id'lerini döndüren tek bir SELECT
+ * (bkz. `ModuleDefinition.attachmentRefsSql`); hiçbir modül ek kullanmıyorsa
+ * `null`. Her sorgu tek, NULL içermeyen bir kolon döndürmeli — `NOT IN` bir
+ * NULL görünce hiçbir satırı eşleştirmez.
+ *
+ * Üst seviye sabit değil, her çağrıda hesaplanıyor: registry bu dosyayı da
+ * dolaylı import eden modüllerle aynı import grafiğinde, ayrıca testler
+ * `MODULE_REGISTRY`'ye sahte modül ekleyebilsin.
+ */
+export function moduleAttachmentRefsSql(): string | null {
+  const queries = MODULE_REGISTRY.flatMap((entry) =>
+    entry.attachmentRefsSql ? [entry.attachmentRefsSql] : [],
+  );
+  return queries.length > 0 ? queries.join(" UNION ") : null;
+}
+
+function isReferencedByModule(db: DatabaseSync, attachmentId: string): boolean {
+  const refs = moduleAttachmentRefsSql();
+  if (!refs) return false;
+  return Boolean(db.prepare(`SELECT 1 WHERE ? IN (${refs})`).get(attachmentId));
+}
+
+/**
  * Hiçbir issue'ya bağlanmamış (kaydedilmeden bırakılmış) attachment'ları belirli
  * bir yaştan sonra siler. Yeni yüklemede ve uygulama açılışında çalışıyor —
  * yalnızca yüklemeye bağlıyken, bir daha görsel yüklenmezse hiç çalışmıyordu.
+ * Bir modülün (ör. wiki) kullandığı ekler issue'ya bağlı olmasa da silinmez.
  */
 export function pruneOrphanedAttachments(db: DatabaseSync, now = Date.now()): void {
   const cutoff = new Date(now - ORPHAN_MAX_AGE_MS).toISOString();
-  db.prepare("DELETE FROM attachments WHERE issue_id IS NULL AND created_at < ?").run(cutoff);
+  const refs = moduleAttachmentRefsSql();
+  db.prepare(
+    `DELETE FROM attachments WHERE issue_id IS NULL AND created_at < ?${
+      refs ? ` AND id NOT IN (${refs})` : ""
+    }`,
+  ).run(cutoff);
 }
 
 /** Bir HTML gövdesinde referans edilen attachment id'lerini çıkarır (Tiptap `<img src="...">`). */
@@ -37,11 +67,33 @@ export function linkAttachmentsToIssue(
 }
 
 /**
+ * Seçilen issue'lara bağlı ekleri bırakır: bir modülün de kullandığı ekin
+ * yalnız `issue_id`'si boşaltılır, kalanlar silinir. Aynı görsel HTML'i hem bir
+ * wiki sayfasında hem bir issue'da olabilir (kopyala-yapıştır); issue silinince
+ * wiki'deki görsel kırılmamalı. `issueFilterSql` issue id'lerini veren bir
+ * ifade: tek issue için `"?"`, proje için `"SELECT id FROM issues WHERE project_id = ?"`.
+ */
+export function releaseIssueAttachments(
+  db: DatabaseSync,
+  issueFilterSql: string,
+  ...params: SQLInputValue[]
+): void {
+  const refs = moduleAttachmentRefsSql();
+  if (refs) {
+    db.prepare(
+      `UPDATE attachments SET issue_id = NULL WHERE issue_id IN (${issueFilterSql}) AND id IN (${refs})`,
+    ).run(...params);
+  }
+  db.prepare(`DELETE FROM attachments WHERE issue_id IN (${issueFilterSql})`).run(...params);
+}
+
+/**
  * Bir issue kaydedilirken attachment'larını gövdelerle eşitler: yeni
  * referanslar bağlanır, artık hiçbir gövdede geçmeyen ama bu issue'ya bağlı
  * olan BLOB'lar silinir. Önceki temizlik yalnızca hiç bağlanmamış kayıtları
  * kapsadığı için açıklamadan silinen bir görsel DB'de sonsuza kadar kalıyordu.
- * Notlar da referans sayıldığı için gövdeleri buradan okunuyor.
+ * Notlar da referans sayıldığı için gövdeleri buradan okunuyor. Bir modülün
+ * kullandığı ek silinmez, yalnız issue'dan ayrılır.
  */
 export function syncIssueAttachments(
   db: DatabaseSync,
@@ -63,7 +115,10 @@ export function syncIssueAttachments(
     .prepare("SELECT id FROM attachments WHERE issue_id = ?")
     .all(issueId) as { id: string }[];
   const remove = db.prepare("DELETE FROM attachments WHERE id = ?");
+  const detach = db.prepare("UPDATE attachments SET issue_id = NULL WHERE id = ?");
   for (const row of owned) {
-    if (!referenced.has(row.id)) remove.run(row.id);
+    if (referenced.has(row.id)) continue;
+    if (isReferencedByModule(db, row.id)) detach.run(row.id);
+    else remove.run(row.id);
   }
 }

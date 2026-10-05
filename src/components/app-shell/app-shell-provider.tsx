@@ -5,6 +5,7 @@ import { useLocalStorageState } from "@/lib/use-local-storage-state";
 import { isTypingTarget } from "@/lib/keyboard";
 import type { IssueIndexEntry } from "@/lib/data/issues";
 import type { Project } from "@/lib/data/projects";
+import type { ModuleSearchEntry } from "@/lib/modules/registry";
 
 export interface AppShellContextValue {
   sidebarCollapsed: boolean;
@@ -15,6 +16,8 @@ export interface AppShellContextValue {
   setCreateIssueOpen: (open: boolean) => void;
   /** Komut paletinin aradığı hafif issue listesi (id, başlık, proje). */
   issueIndex: IssueIndexEntry[];
+  /** Açık modüllerin palette aranan kayıtları (ör. wiki sayfaları). */
+  moduleSearchEntries: ModuleSearchEntry[];
   projects: Project[];
   /** Yeni issue dialog'u "bana ata" tercihini burada çözüyor. */
   currentUserId: string | null;
@@ -35,11 +38,13 @@ export function useAppShell(): AppShellContextValue {
 export function AppShellProvider({
   children,
   issueIndex,
+  moduleSearchEntries,
   projects,
   currentUserId,
 }: {
   children: ReactNode;
   issueIndex: IssueIndexEntry[];
+  moduleSearchEntries: ModuleSearchEntry[];
   projects: Project[];
   currentUserId: string | null;
 }) {
@@ -65,17 +70,20 @@ export function AppShellProvider({
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      // Metin yazarken hiçbir global kısayol tetiklenmemeli — özellikle
-      // değiştiricisiz `c`, aksi halde her "c" harfi dialog açardı.
-      if (isTypingTarget(event.target)) return;
       const mod = event.metaKey || event.ctrlKey;
       const key = event.key.toLowerCase();
 
+      // Komut paleti yazarken de açılabilmeli (ör. wiki editöründeyken); Mod+K
+      // metin girişinde başka bir anlam taşımıyor, editörde de bağlı değil.
       if (mod && key === "k") {
         event.preventDefault();
         setCommandOpen((open) => !open);
         return;
       }
+
+      // Metin yazarken diğer global kısayollar tetiklenmemeli — özellikle
+      // değiştiricisiz `c`, aksi halde her "c" harfi dialog açardı.
+      if (isTypingTarget(event.target)) return;
       if (mod && key === "b") {
         event.preventDefault();
         setSidebarCollapsed(!sidebarCollapsed);
@@ -103,6 +111,7 @@ export function AppShellProvider({
         createIssueOpen,
         setCreateIssueOpen,
         issueIndex,
+        moduleSearchEntries,
         projects,
         currentUserId,
         activeProjectId,

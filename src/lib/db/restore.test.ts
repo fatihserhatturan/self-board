@@ -5,7 +5,8 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { after, describe, it } from "node:test";
 import { restoreFromFile } from "@/lib/db/restore";
-import { createTestDb, stateIdOfType } from "@/lib/db/test-db";
+import { setModuleEnabledDb } from "@/lib/db/modules";
+import { createTestDb, stateIdOfType, withFakeAttachmentModule } from "@/lib/db/test-db";
 
 const workDir = mkdtempSync(path.join(tmpdir(), "self-board-restore-"));
 after(() => rmSync(workDir, { recursive: true, force: true }));
@@ -63,6 +64,29 @@ describe("restoreFromFile", () => {
     };
     assert.deepEqual([...row.data], [1, 2]);
     assert.equal(count(target, "workflow_states"), 5);
+  });
+
+  it("modüllerin açık/kapalı durumunu ve modül tablolarını taşır", () => {
+    const source = createTestDb();
+    const target = createTestDb();
+
+    withFakeAttachmentModule([source, target], (addRef) => {
+      setModuleEnabledDb(source, "test-attachments", true);
+      addRef(source, "kaynakta");
+      const backup = writeBackup(source, "with-module.db");
+
+      addRef(target, "sonradan-eklenen");
+      restoreFromFile(target, backup);
+    });
+
+    assert.deepEqual(
+      target.prepare("SELECT id, enabled FROM modules").all().map((row) => ({ ...row })),
+      [{ id: "test-attachments", enabled: 1 }],
+    );
+    assert.deepEqual(
+      target.prepare("SELECT attachment_id FROM test_module_refs").all().map((row) => ({ ...row })),
+      [{ attachment_id: "kaynakta" }],
+    );
   });
 
   it("eksik kolonlu eski bir yedeği migration'lardan geçirir", () => {

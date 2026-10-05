@@ -1,6 +1,7 @@
 "use server";
 
 import { getDb } from "@/lib/db/client";
+import { MODULE_REGISTRY } from "@/lib/modules/registry";
 import type { ActionResult } from "@/lib/actions/issues";
 
 /**
@@ -11,7 +12,7 @@ import type { ActionResult } from "@/lib/actions/issues";
  * `workflow_states` ve `app_settings` önce eksikti: issue'lar durumlara işaret
  * ettiği için o tablo olmadan döküm tek başına anlamlı değildi.
  */
-const EXPORTED_TABLES = [
+const CORE_EXPORTED_TABLES = [
   "users",
   "labels",
   "projects",
@@ -23,17 +24,20 @@ const EXPORTED_TABLES = [
   "issue_notes",
   "views",
   "app_settings",
-] as const;
+  "modules",
+];
 
-const COLUMN_SELECT: Partial<Record<(typeof EXPORTED_TABLES)[number], string>> = {
+const COLUMN_SELECT: Partial<Record<string, string>> = {
   projects: "id, name, prefix, color, cycle_duration_days, issue_seq, created_at",
 };
 
 export async function exportWorkspace(): Promise<ActionResult<{ json: string }>> {
   const db = getDb();
+  // Modül tabloları registry'den: yeni bir modül dökümde kendiliğinden yer alır.
+  const tables = [...CORE_EXPORTED_TABLES, ...MODULE_REGISTRY.flatMap((entry) => entry.tables ?? [])];
 
   const data: Record<string, unknown[]> = {};
-  for (const table of EXPORTED_TABLES) {
+  for (const table of tables) {
     const columns = COLUMN_SELECT[table] ?? "*";
     data[table] = db.prepare(`SELECT ${columns} FROM ${table}`).all();
   }
