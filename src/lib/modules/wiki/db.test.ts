@@ -8,6 +8,7 @@ import { createTestDb, insertTestAttachment } from "@/lib/db/test-db";
 import {
   deleteWikiPageSubtreeDb,
   insertWikiPageDb,
+  listWikiSearchEntriesDb,
   listWikiTreeDb,
   moveWikiPageDb,
   readWikiPageDb,
@@ -213,6 +214,22 @@ describe("deleteWikiPageSubtreeDb", () => {
   it("olmayan sayfa için page-not-found döner", () => {
     const db = createTestDb();
     assert.deepEqual(deleteWikiPageSubtreeDb(db, "missing"), { ok: false, error: "page-not-found" });
+  });
+});
+
+describe("listWikiSearchEntriesDb", () => {
+  it("tüm projelerin sayfalarını son düzenlenen önce ve sayfa bağlantısıyla döner", () => {
+    const db = createTestDb();
+    addProject(db, "other");
+    const older = createPage(db);
+    const newer = createPage(db, null, "other");
+    updateWikiPageContentDb(db, older, { title: "Eski", body: "" }, new Date("2026-01-01T00:00:00Z"));
+    updateWikiPageContentDb(db, newer, { title: "Yeni", body: "" }, new Date("2026-02-01T00:00:00Z"));
+
+    assert.deepEqual(listWikiSearchEntriesDb(db), [
+      { moduleId: "wiki", id: newer, title: "Yeni", projectId: "other", href: `/wiki?project=other&page=${newer}` },
+      { moduleId: "wiki", id: older, title: "Eski", projectId: "core", href: `/wiki?project=core&page=${older}` },
+    ]);
   });
 });
 
