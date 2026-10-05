@@ -18,6 +18,10 @@ Tüm veri makinede, tek bir SQLite dosyasında durur — sunucu, hesap ya da ağ
 - **Kaydedilmiş görünümler** — filtre ve görünüm ayarlarının adlandırılmış anlık görüntüsü.
 - **Yedekleme** — Ayarlar > Veri altında JSON dökümü ve veritabanı dosyasının tam
   kopyası (görseller dahil); aynı yerden geri yükleme.
+- **Opsiyonel modüller** — varsayılan kapalı, Ayarlar > Modüller'den açılır:
+  - **Wiki** — her projenin iç içe sayfaları; otomatik kaydedilen zengin metin,
+    görseller, `COR-12` gibi tıklanabilir issue bağlantıları, son düzenleme bilgisi,
+    komut paletinde (Ctrl/⌘+K) arama.
 - **Türkçe/İngilizce arayüz**, açık/koyu/sistem teması.
 
 ## Çalıştırma
@@ -34,7 +38,8 @@ Doğrulama:
 npx tsc --noEmit
 npm run lint
 npm test             # node:test + tsx; saf yardımcılar ve bellek içi SQLite ile
-                     # şema/migration, silme, yazma doğrulaması, cycle devri, geri yükleme
+                     # şema/migration, silme, yazma doğrulaması, cycle devri, geri yükleme,
+                     # ek sahipliği, wiki ağacı
 npm run build
 ```
 
@@ -58,6 +63,7 @@ dizinindedir (Windows'ta `%APPDATA%/self-board/self-board.db`).
 | Okuma | `src/lib/data/` | React `cache()` ile istek başına tekilleştirilmiş sorgular |
 | Yazma | `src/lib/actions/` | Server Action'lar, `ActionResult<T>` döner, `revalidatePath` çağırır |
 | Şema | `src/lib/db/schema.ts` | DDL + elle yazılmış ileri yönlü migration'lar |
+| Modüller | `src/lib/modules/` | `registry.ts` + modül başına klasör (ör. `wiki/`); bileşenleri `src/components/<modül>/` |
 | Bileşenler | `src/components/ui/` | Radix tabanlı tasarım sistemi |
 | Masaüstü | `electron/` | Ana süreç, preload, standalone hazırlama betiği |
 
@@ -90,8 +96,30 @@ Birkaç bilinçli karar:
 - **Tercihler ikiye ayrılmış.** Sunucunun okuması gerekenler (başlangıç sayfası, yeni
   issue varsayılanları, tarih biçimi) `app_settings` anahtar-değer tablosunda; tipleri
   ve varsayılanları `src/lib/preferences-config.ts` içinde, DB'siz tutuluyor ki client
-  bileşenler `node:sqlite`'ı bundle'a çekmesin. Tema ve dil ilk boyamadan önce
-  gerektiği için `localStorage`'da kalıyor.
+  bileşenler `node:sqlite`'ı bundle'a çekmesin. Dil bir cookie'de (sunucu ilk
+  boyamada doğru dille render etsin diye), tema `localStorage`'da.
+- **Modüller görünürlükle açılıp kapanıyor, kurulum adımı yok.** Her modülün
+  tabloları (`ModuleDefinition.ddl`) modül kapalıyken de `ensureSchema` ile kuruluyor;
+  kapatmak veriyi silmez, yalnız nav girişini ve rotayı gizler (rota `notFound()`,
+  action'lar `module-disabled` döner). Yeni bir modül `MODULE_REGISTRY`'ye tek bir
+  giriş: sidebar, Ayarlar > Modüller, proje silme (`onProjectDeleted`), yedekleme/geri
+  yükleme (`tables`) ve ek temizliği (`attachmentRefsSql`) onu kendiliğinden tanıyor.
+  Komut paleti araması için `src/lib/modules/server.ts`'e bir satır.
+- **Registry client bundle'ına giriyor.** `registry.ts`'in import ettiği modül dosyası
+  (ör. `wiki/schema.ts`) yalnız `import type`, sabitler ve `db` parametresi alan saf
+  fonksiyonlar içerebilir; `@/lib/db/*` ya da `node:*` runtime import'u yasak. Modülün
+  sunucu kodu (`wiki/db.ts`, `data.ts`, `actions.ts`) ayrı dosyalarda.
+- **Eklerin sahibi tek yerde belirleniyor.** Issue ekleri `attachments.issue_id` ile,
+  modül ekleri modülün kendi eşleme tablosuyla (ör. `wiki_page_attachments`) bağlı.
+  Core bir modülün kullandığı eki hiç silmez, yalnız issue'dan ayırır; hiçbir yerde
+  kullanılmayan ekler 24 saat sonra `pruneOrphanedAttachments` ile toplanır. Aynı
+  görsel hem bir issue'da hem bir wiki sayfasında olabildiği için (kopyala-yapıştır)
+  modüller BLOB silmez.
+- **Wiki editörü içeriğini bağlandığı anda donduruyor.** Otomatik kayıt `/wiki`'yi
+  revalidate ediyor (etmeseydi tarayıcının Geri tuşu eski içeriği getirir, üstüne
+  yazılınca yeni içerik ezilirdi); gelen yeni `page.body` editöre verilseydi kayıt
+  sürerken yazılanı silerdi. Editör `key={page.id}` ile kuruluyor, sunucudan yalnız
+  `updatedAt` okunuyor.
 - **Tasarım token'ları** `src/styles/tokens.css` içinde. Koyu tema değerleri Linear'ın
   Figma topluluk dosyasından alınmış; açık tema türetilmiştir.
 
