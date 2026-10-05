@@ -1,7 +1,14 @@
 import type { Route } from "next";
 import type { DatabaseSync } from "node:sqlite";
-import type { LucideIcon } from "lucide-react";
+import { BookOpen, type LucideIcon } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n/types";
+import {
+  WIKI_ATTACHMENT_REFS_SQL,
+  WIKI_DDL,
+  WIKI_MODULE_ID,
+  WIKI_TABLES,
+  deleteWikiProjectData,
+} from "@/lib/modules/wiki/schema";
 
 /**
  * Uygulamanın çekirdeğine ek, varsayılan olarak KAPALI gelen opsiyonel
@@ -92,8 +99,21 @@ export interface ModuleSearchEntry {
 }
 
 /**
- * v1: hiç modül yok. Bir modül eklendiğinde buraya bir `ModuleDefinition`
- * eklenir — sidebar, Ayarlar > Modüller sayfası, şema ve proje silme akışı
- * sıfır ek değişiklikle onu keşfeder.
+ * Kayıtlı modüller. Bir modül eklendiğinde buraya bir `ModuleDefinition`
+ * eklenir — sidebar, Ayarlar > Modüller sayfası, şema, proje silme akışı,
+ * yedekleme ve ek temizliği onu kendiliğinden keşfeder.
  */
-export const MODULE_REGISTRY: ModuleDefinition[] = [];
+export const MODULE_REGISTRY: ModuleDefinition[] = [
+  {
+    id: WIKI_MODULE_ID,
+    scope: "per-project",
+    icon: BookOpen,
+    nameKey: "modules.wiki.name",
+    descriptionKey: "modules.wiki.description",
+    nav: { href: "/wiki", labelKey: "nav.wiki" },
+    ddl: WIKI_DDL,
+    tables: WIKI_TABLES,
+    attachmentRefsSql: WIKI_ATTACHMENT_REFS_SQL,
+    onProjectDeleted: deleteWikiProjectData,
+  },
+];

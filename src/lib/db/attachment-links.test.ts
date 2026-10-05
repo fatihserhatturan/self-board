@@ -40,8 +40,14 @@ describe("extractAttachmentIds", () => {
 });
 
 describe("moduleAttachmentRefsSql", () => {
-  it("ek kullanan modül yoksa null", () => {
-    assert.equal(moduleAttachmentRefsSql(), null);
+  it("ek kullanan modüllerin sorgularını birleştirir", () => {
+    const db = createTestDb();
+    withFakeAttachmentModule([db], () => {
+      const sql = moduleAttachmentRefsSql();
+      assert.match(sql ?? "", /wiki_page_attachments/);
+      assert.match(sql ?? "", / UNION SELECT attachment_id FROM test_module_refs/);
+      assert.doesNotThrow(() => db.prepare(sql!).all());
+    });
   });
 });
 
