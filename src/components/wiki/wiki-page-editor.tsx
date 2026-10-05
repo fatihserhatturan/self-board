@@ -1,6 +1,9 @@
 "use client";
 
-import { useImperativeHandle, useState, type Ref } from "react";
+import { useImperativeHandle, useMemo, useState, type Ref } from "react";
+import { useRouter } from "next/navigation";
+import { useAppShell } from "@/components/app-shell/app-shell-provider";
+import type { IssueRefOptions } from "@/components/board/issue-ref-extension";
 import { RichTextEditor } from "@/components/board/rich-text-editor";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { useLocale } from "@/components/locale-provider";
@@ -52,6 +55,30 @@ export function WikiPageEditor({ page, autoFocusTitle, onTitleChange, ref }: Wik
     autosave.discard,
   ]);
 
+  // `COR-12` gibi kimlikler tıklanabilir; yalnız var olan issue'lar. Açmadan
+  // önce bekleyen kayıt yazılıyor.
+  const { issueIndex, setActiveProjectId } = useAppShell();
+  const router = useRouter();
+  const { flush } = autosave;
+  const issueRefs = useMemo<IssueRefOptions>(() => {
+    const byId = new Map(issueIndex.map((issue) => [issue.id, issue]));
+    return {
+      resolve: (id) => {
+        const issue = byId.get(id);
+        return issue ? { title: issue.title, projectId: issue.projectId } : undefined;
+      },
+      open: (id) => {
+        const issue = byId.get(id);
+        if (!issue) return;
+        void flush().then(() => {
+          setActiveProjectId(issue.projectId);
+          router.push(`/issues?project=${issue.projectId}&open=${id}`);
+        });
+      },
+      hint: t("editor.issueRef.hint"),
+    };
+  }, [issueIndex, flush, setActiveProjectId, router, t]);
+
   const statusKey = STATUS_KEY[autosave.status];
 
   return (
@@ -92,6 +119,7 @@ export function WikiPageEditor({ page, autoFocusTitle, onTitleChange, ref }: Wik
         onChange={(html) => autosave.update({ body: html })}
         placeholder={t("wiki.bodyPlaceholder")}
         variant="document"
+        issueRefs={issueRefs}
       />
     </div>
   );

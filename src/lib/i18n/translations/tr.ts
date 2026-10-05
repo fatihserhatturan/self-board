@@ -194,6 +194,7 @@ export const tr = {
   "commandPalette.srTitle": "Komut paleti",
   "settings.appearance.theme.toggle": "Temayı değiştir",
   "settings.appearance.theme.system": "Sistem",
+  "editor.issueRef.hint": "Ctrl/⌘ + tıkla: issue'yu aç",
   "editor.bold": "Kalın",
   "editor.italic": "İtalik",
   "editor.strike": "Üstü çizili",

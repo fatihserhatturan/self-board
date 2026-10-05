@@ -196,6 +196,7 @@ export const en: Record<keyof typeof tr, string> = {
   "commandPalette.srTitle": "Command palette",
   "settings.appearance.theme.toggle": "Toggle theme",
   "settings.appearance.theme.system": "System",
+  "editor.issueRef.hint": "Ctrl/⌘ + click to open the issue",
   "editor.bold": "Bold",
   "editor.italic": "Italic",
   "editor.strike": "Strikethrough",

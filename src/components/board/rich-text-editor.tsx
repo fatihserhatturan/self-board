@@ -25,6 +25,11 @@ import { toast } from "@/components/ui/toast";
 import { Toggle } from "@/components/ui/toggle";
 import { useLocale } from "@/components/locale-provider";
 import { LinkPreview } from "@/components/board/link-preview-node";
+import {
+  createIssueRefController,
+  issueRefPluginKey,
+  type IssueRefOptions,
+} from "@/components/board/issue-ref-extension";
 import { uploadAttachment } from "@/lib/actions/attachments";
 import { fileToBase64 } from "@/lib/file-to-base64";
 import { cn } from "@/lib/utils";
@@ -71,6 +76,12 @@ export interface RichTextEditorProps {
    * kaydırırken üstte kalıyor.
    */
   variant?: "field" | "document";
+  /**
+   * Verilirse metindeki issue kimlikleri (`COR-12`) bağlantı gibi görünür ve
+   * Ctrl/⌘ + tık ile açılır. İlk render'da verilmiş olmalı (eklenti editör
+   * kurulurken ekleniyor); değeri sonradan değişebilir.
+   */
+  issueRefs?: IssueRefOptions;
 }
 
 export function RichTextEditor({
@@ -79,8 +90,13 @@ export function RichTextEditor({
   editable = true,
   placeholder,
   variant = "field",
+  issueRefs,
 }: RichTextEditorProps) {
   const isDocument = variant === "document";
+  // Eklenti editörle bir kez kuruluyor; güncel seçenekleri denetleyici taşıyor.
+  const [issueRefController] = useState(() =>
+    issueRefs ? createIssueRefController(issueRefs) : null,
+  );
   const { t } = useLocale();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastEmittedContent = useRef(content);
@@ -109,8 +125,22 @@ export function RichTextEditor({
           HTMLAttributes: { target: "_blank", rel: "noopener noreferrer" },
         }),
         LinkPreview,
+        ...(issueRefController ? [issueRefController.extension] : []),
       ],
       editorProps: {
+        // Düzenlenebilir editörde linke düz tık imleci koyuyor (`openOnClick`
+        // kapalı); Ctrl/⌘ + tık açıyor. Wiki hep düzenlenebilir olduğu için
+        // aksi halde içindeki linkler hiç açılamazdı. Electron bu pencereyi
+        // harici tarayıcıya yönlendiriyor.
+        handleClick: (view, _pos, event) => {
+          if (!view.editable || !(event.metaKey || event.ctrlKey)) return false;
+          const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null;
+          const href = anchor?.getAttribute("href");
+          if (!href) return false;
+          event.preventDefault();
+          window.open(href, "_blank", "noopener,noreferrer");
+          return true;
+        },
         handlePaste: (view, event) => {
           const clipboardData = event.clipboardData;
           const imageFile =
@@ -154,6 +184,16 @@ export function RichTextEditor({
   useEffect(() => {
     editorRef.current = editor;
   }, [editor]);
+
+  // Issue listesi değişince (yeni issue, silinen issue) bağlantılar belgeye
+  // dokunmadan yeniden hesaplanıyor.
+  useEffect(() => {
+    if (!issueRefController) return;
+    issueRefController.setOptions(issueRefs);
+    // Bağlanmadan önce `isDestroyed` true; eklenti zaten kurulumda güncel değeri okuyor.
+    if (!editor || editor.isDestroyed) return;
+    editor.view.dispatch(editor.state.tr.setMeta(issueRefPluginKey, true));
+  }, [issueRefs, editor, issueRefController]);
 
   // Tiptap v3'te `useEditor` her transaction'da yeniden render ETMİYOR; araç
   // çubuğunun aktif durumları bu abonelik olmadan imleçle güncellenmezdi.
@@ -395,6 +435,7 @@ export function RichTextEditor({
             "[&_code]:rounded [&_code]:bg-bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-mini",
             "[&_pre]:my-1.5 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-bg-muted [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0",
             "[&_hr]:my-3 [&_hr]:border-border-default",
+            "[&_.issue-ref]:cursor-pointer [&_.issue-ref]:text-accent [&_.issue-ref]:underline [&_.issue-ref]:decoration-dotted [&_.issue-ref]:underline-offset-2",
             isDocument
               ? "px-0 py-3"
               : editable
