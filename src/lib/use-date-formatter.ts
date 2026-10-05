@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useLocale } from "@/components/locale-provider";
 import { usePreferences } from "@/components/preferences-provider";
 import type { DateFormat } from "@/lib/preferences-config";
+import { pickRelativeUnit } from "@/lib/relative-time";
 
 const LOCALE_TAG: Record<string, string> = { tr: "tr-TR", en: "en-US" };
 
@@ -30,6 +31,8 @@ export interface DateFormatters {
   formatDateTime: (date: Date) => string;
   /** Yılsız kısa tarih — cycle aralıkları. */
   formatDayMonth: (date: Date) => string;
+  /** "3 saat önce" gibi göreli zaman — wiki'de son düzenleme. `now` için `useNow()`. */
+  formatRelative: (date: Date, now: number) => string;
 }
 
 export function useDateFormatter(): DateFormatters {
@@ -40,9 +43,14 @@ export function useDateFormatter(): DateFormatters {
   return useMemo(() => {
     const dateTime = new Intl.DateTimeFormat(tag, DATE_TIME_OPTIONS[dateFormat]);
     const dayMonth = new Intl.DateTimeFormat(tag, DAY_MONTH_OPTIONS[dateFormat]);
+    const relative = new Intl.RelativeTimeFormat(tag, { numeric: "auto" });
     return {
       formatDateTime: (date: Date) => dateTime.format(date),
       formatDayMonth: (date: Date) => dayMonth.format(date),
+      formatRelative: (date: Date, now: number) => {
+        const { value, unit } = pickRelativeUnit(date.getTime() - now);
+        return relative.format(value, unit);
+      },
     };
   }, [tag, dateFormat]);
 }

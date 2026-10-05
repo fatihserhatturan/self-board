@@ -65,6 +65,12 @@ export interface RichTextEditorProps {
   onChange?: (html: string) => void;
   editable?: boolean;
   placeholder?: string;
+  /**
+   * "field": form içinde kenarlıklı alan (issue açıklaması, not). "document":
+   * tüm paneli kaplayan uzun metin (wiki sayfası) — kenarlıksız, araç çubuğu
+   * kaydırırken üstte kalıyor.
+   */
+  variant?: "field" | "document";
 }
 
 export function RichTextEditor({
@@ -72,7 +78,9 @@ export function RichTextEditor({
   onChange,
   editable = true,
   placeholder,
+  variant = "field",
 }: RichTextEditorProps) {
+  const isDocument = variant === "document";
   const { t } = useLocale();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastEmittedContent = useRef(content);
@@ -232,7 +240,12 @@ export function RichTextEditor({
   return (
     <div className="flex flex-col gap-1.5">
       {editable && editor && (
-        <div className="flex flex-wrap items-center gap-1">
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-1",
+            isDocument && "sticky top-0 z-10 -mx-1 border-b border-border-default bg-bg-app px-1 py-1.5",
+          )}
+        >
           {/* StarterKit bu işaretlemelerin hepsini destekliyordu ama arayüzde
               yalnızca resim ve link butonu vardı — kalanı ancak klavye
               kısayoluyla erişilebiliyordu. */}
@@ -354,14 +367,22 @@ export function RichTextEditor({
       )}
       <div className="relative">
         {isEmpty && placeholder && (
-          <span className="pointer-events-none absolute left-3 top-2 text-small text-text-tertiary">
+          <span
+            className={cn(
+              "pointer-events-none absolute text-text-tertiary",
+              isDocument ? "left-0 top-3 text-normal" : "left-3 top-2 text-small",
+            )}
+          >
             {placeholder}
           </span>
         )}
         <EditorContent
           editor={editor as Editor}
           className={cn(
-            "min-h-16 rounded-md text-small text-text-primary [&_.ProseMirror]:outline-none",
+            "rounded-md text-text-primary [&_.ProseMirror]:outline-none",
+            isDocument
+              ? "text-normal [&_.ProseMirror]:min-h-[50vh]"
+              : "min-h-16 text-small",
             "[&_p]:my-1 [&_img]:max-w-full [&_img]:max-h-80 [&_img]:rounded-md [&_a]:text-accent [&_a]:underline",
             // Tailwind preflight liste ve başlık stillerini sıfırlıyor: madde
             // işaretleri, numaralar ve başlık boyutları burada geri veriliyor —
@@ -374,9 +395,11 @@ export function RichTextEditor({
             "[&_code]:rounded [&_code]:bg-bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-mini",
             "[&_pre]:my-1.5 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-bg-muted [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0",
             "[&_hr]:my-3 [&_hr]:border-border-default",
-            editable
-              ? "border border-border-default bg-bg-surface px-3 py-2 focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]"
-              : "px-0 py-0",
+            isDocument
+              ? "px-0 py-3"
+              : editable
+                ? "border border-border-default bg-bg-surface px-3 py-2 focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]"
+                : "px-0 py-0",
           )}
         />
       </div>
