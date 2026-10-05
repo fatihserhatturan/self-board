@@ -16,6 +16,13 @@ import type { TranslationKey } from "@/lib/i18n/types";
  * `TranslationKey`: var olmayan bir çeviri anahtarı yazılırsa derleme zamanında
  * hata verir (bkz. `lib/i18n/types.ts` — `TranslationKey = keyof typeof tr`).
  *
+ * **Import kuralı:** bu dosya client bundle'ına giriyor. Bir modülün buradan
+ * import edilen dosyası (ör. `modules/wiki/schema.ts`) yalnız `import type`,
+ * saf sabitler ve `db` parametresi alan saf fonksiyonlar içerebilir —
+ * `@/lib/db/*` ya da `node:*` runtime import'u yasak. Hem `node:sqlite`
+ * tarayıcı chunk'ına sızardı, hem de `attachment-links.ts` → registry →
+ * modül → `attachment-links.ts` import döngüsü oluşurdu.
+ *
  * Etkinleştirme yalnızca GÖRÜNÜRLÜĞÜ kontrol eder, bir "kurulum" akışı değil:
  * kapatmak veriyi silmez, tekrar açılınca önceki veri yerinde durur (bkz.
  * `lib/db/modules.ts`). Modülün kendi tablosu (varsa) `ddl` alanıyla, modül
@@ -55,6 +62,33 @@ export interface ModuleDefinition {
    * eklemek gerekmez.
    */
   onProjectDeleted?: (db: DatabaseSync, projectId: string) => void;
+  /**
+   * Modülün tabloları, ebeveyn önce sıralı. Yedekleme/geri yükleme listeleri
+   * (`lib/db/restore.ts`, `lib/actions/backup.ts`) bunu okuyor — listede
+   * olmayan bir tablo geri yüklemede eski hâliyle kalır, olmayan projelere ve
+   * eklere işaret eden veri bırakırdı.
+   */
+  tables?: readonly string[];
+  /**
+   * Modülün referans verdiği attachment id'lerini döndüren bir SELECT. Core'un
+   * ek temizliği (`lib/db/attachment-links.ts`) bu id'leri silmez: aksi halde
+   * hiçbir issue'ya bağlı olmayan modül görselleri 24 saat sonra yetim sayılıp
+   * silinirdi.
+   */
+  attachmentRefsSql?: string;
+}
+
+/**
+ * Bir modülün komut paletinde aranabilir kaydı (ör. bir wiki sayfası). Core
+ * yalnız bu şekli bilir; kaydı üreten sorgu modülün kendi sunucu kodunda
+ * (`lib/modules/server.ts`).
+ */
+export interface ModuleSearchEntry {
+  moduleId: string;
+  id: string;
+  title: string;
+  projectId: string | null;
+  href: Route;
 }
 
 /**

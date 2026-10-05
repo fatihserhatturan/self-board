@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { syncIssueAttachments } from "@/lib/db/attachment-links";
+import { releaseIssueAttachments, syncIssueAttachments } from "@/lib/db/attachment-links";
 import { MODULE_REGISTRY } from "@/lib/modules/registry";
 
 /**
@@ -27,7 +27,7 @@ export function deleteIssueCascade(db: DatabaseSync, issueId: string): boolean {
   return inTransaction(db, () => {
     db.prepare("DELETE FROM issue_labels WHERE issue_id = ?").run(issueId);
     db.prepare("DELETE FROM issue_notes WHERE issue_id = ?").run(issueId);
-    db.prepare("DELETE FROM attachments WHERE issue_id = ?").run(issueId);
+    releaseIssueAttachments(db, "?", issueId);
     const result = db.prepare("DELETE FROM issues WHERE id = ?").run(issueId);
     return Number(result.changes) > 0;
   });
@@ -42,7 +42,9 @@ export function deleteProjectCascade(db: DatabaseSync, projectId: string): boole
   return inTransaction(db, () => {
     db.prepare(`DELETE FROM issue_labels WHERE issue_id IN (${issuesOfProject})`).run(projectId);
     db.prepare(`DELETE FROM issue_notes WHERE issue_id IN (${issuesOfProject})`).run(projectId);
-    db.prepare(`DELETE FROM attachments WHERE issue_id IN (${issuesOfProject})`).run(projectId);
+    // Modüllerin de kullandığı ekler silinmez, yalnız issue'dan ayrılır; aşağıdaki
+    // modül kancası kendi eşlemesini siler, sahipsiz kalanı prune toplar.
+    releaseIssueAttachments(db, issuesOfProject, projectId);
     db.prepare("DELETE FROM issues WHERE project_id = ?").run(projectId);
     db.prepare("DELETE FROM views WHERE project_id = ?").run(projectId);
     db.prepare(

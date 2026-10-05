@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { ensureSchema } from "@/lib/db/schema";
+import { MODULE_REGISTRY } from "@/lib/modules/registry";
 
 /**
  * Yedek geri yükleme. Veritabanı dosyasının üzerine yazmak yerine yedek
@@ -10,7 +11,7 @@ import { ensureSchema } from "@/lib/db/schema";
  *
  * Silme sırası çocuk tablolardan ebeveyne: foreign key'ler açık.
  */
-const TABLES_PARENT_FIRST = [
+const CORE_TABLES_PARENT_FIRST = [
   "users",
   "labels",
   "projects",
@@ -24,7 +25,18 @@ const TABLES_PARENT_FIRST = [
   "link_previews",
   "views",
   "app_settings",
-] as const;
+  "modules",
+];
+
+/**
+ * Modül tabloları core'dan sonra geliyor (core tablolarına işaret ediyorlar).
+ * Önceden liste sabitti: modül tabloları ve `modules` tablosunun kendisi geri
+ * yüklenmiyor, hedefteki eski hâlleri olmayan projelere işaret ederek kalıyordu.
+ * Fonksiyon, sabit değil: testler registry'ye sahte modül ekleyebiliyor.
+ */
+export function restorableTables(): string[] {
+  return [...CORE_TABLES_PARENT_FIRST, ...MODULE_REGISTRY.flatMap((entry) => entry.tables ?? [])];
+}
 
 function tableNames(db: DatabaseSync, schema: string): Set<string> {
   const rows = db
@@ -52,7 +64,7 @@ export function restoreFromFile(db: DatabaseSync, filePath: string): void {
     try {
       const target = tableNames(db, "main");
       const source = tableNames(db, "backup");
-      const shared = TABLES_PARENT_FIRST.filter((name) => target.has(name) && source.has(name));
+      const shared = restorableTables().filter((name) => target.has(name) && source.has(name));
       // Veri yedeğin şema sürümünden geliyor; migration'lar ve onarım o sürümden
       // itibaren yeniden çalışmalı (aksi halde eski bir yedek onarımsız kalırdı).
       const sourceVersion = Number(
